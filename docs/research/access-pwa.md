@@ -1,10 +1,10 @@
 # Access-protected mobile PWA feasibility
 
-Research for [issue #3](https://github.com/nurcahyopujo/daily-stars/issues/3), checked 2026-11-08 against [baseline specification 23d1eef](https://github.com/nurcahyopujo/daily-stars/blob/23d1eef/mvp-spec.md), especially F1, F8 and milestones 2/7/8.
+Research for [Verify Access-protected installation and sign-in on both phones](https://github.com/nurcahyopujo/daily-stars/issues/3), checked 2026-11-08 against [baseline specification 23d1eef](https://github.com/nurcahyopujo/daily-stars/blob/23d1eef/mvp-spec.md), especially F1, F8 and milestones 2/7/8.
 
-## Decision and evidence boundary
+## Recommendation and evidence boundary
 
-Proceed with the proposed `workers.dev` + Workers Static Assets + Access architecture for staging. Documentation supports the hosting and authentication components. It does **not** prove that protected installation resources and the full Access redirect flow work in the two target phones' installed apps. Those remain release gates below. No service was provisioned, application implemented, parent email used, or phone test performed for this research.
+The documented components support trying the proposed `workers.dev` + Workers Static Assets + Access architecture in staging. This is a research recommendation, not platform acceptance or a launch decision. Documentation does **not** prove that protected installation resources and the full Access redirect flow work in the two target phones' installed apps. Those remain release gates below. No service was provisioned, application implemented, parent email used, or phone test performed for this research.
 
 ## Hosting and identity: documented facts
 
