@@ -11,7 +11,16 @@
 <script>
 // Portable, in-memory domain model. No DOM or browser storage in this block.
 const Demo = (() => {
- const activities=[{id:'breakfast',label:'Eat breakfast',reward:5,penalty:2},{id:'tidy',label:'Tidy the room',reward:3,penalty:1},{id:'stretch',label:'Morning stretch',reward:2,penalty:0}];
+ const activities=[
+  {id:'breakfast',label:'Eat breakfast',reward:5,penalty:2},
+  {id:'tidy',label:'Tidy the room',reward:3,penalty:1},
+  {id:'stretch',label:'Morning stretch',reward:2,penalty:0},
+  {id:'teeth',label:'Brush teeth',reward:3,penalty:1},
+  {id:'bed',label:'Make the bed',reward:2,penalty:0},
+  {id:'dress',label:'Get dressed',reward:2,penalty:0},
+  {id:'bag',label:'Pack the school bag',reward:4,penalty:1},
+  {id:'water',label:'Fill the water bottle',reward:2,penalty:0}
+ ];
  const fresh=()=>({today:'2026-11-08',date:'2026-11-08',page:'home',child:'maya',children:[{id:'maya',name:'Maya',start:'2026-11-01'},{id:'leo',name:'Leo',start:'2026-11-01'},{id:'ari',name:'Ari',start:'2026-11-01',archive:'2026-11-08'}],scores:{},entries:[],pending:{},next:1,mode:'normal',message:'Ready. All children start at zero.',sheet:null,rules:{active:{name:'Morning routine',reward:5},scheduled:null,versions:[]}});
  const nextDay=(date,delta=1)=>new Date(Date.parse(date+'T12:00:00Z')+delta*86400000).toISOString().slice(0,10);
  const child=s=>s.children.find(c=>c.id===s.child);
