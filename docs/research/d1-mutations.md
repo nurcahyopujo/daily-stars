@@ -1,6 +1,6 @@
 # D1 mutations, retries, and the Jakarta boundary
 
-Research for [issue #2](https://github.com/nurcahyopujo/daily-stars/issues/2), checked 2026-11-08 against the [baseline specification](https://github.com/nurcahyopujo/daily-stars/blob/23d1eef/mvp-spec.md). No application implementation or remote database experiment was performed. There are no existing ADRs in this checkout.
+Research for [Establish D1 atomic writes, retries, and the Jakarta midnight guard](https://github.com/nurcahyopujo/daily-stars/issues/2), checked 2026-11-08 against the [baseline specification](https://github.com/nurcahyopujo/daily-stars/blob/23d1eef/mvp-spec.md). No application implementation or remote database experiment was performed. There are no existing ADRs in this checkout.
 
 ## Finding
 
