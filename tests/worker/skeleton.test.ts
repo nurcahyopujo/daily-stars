@@ -1,9 +1,12 @@
-import { env, exports } from 'cloudflare:workers';
+import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
+import { authenticatedFetch, useSyntheticAccess } from './auth-fixture';
+
+useSyntheticAccess();
 
 describe('local Worker and migrated D1', () => {
   it('checks D1 after migrations, including an empty household', async () => {
-    const response = await exports.default.fetch('https://daily-stars.test/api/health');
+    const response = await authenticatedFetch('https://daily-stars.test/api/health');
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(await response.json()).toEqual({ status: 'ok', database: 'ok' });
@@ -11,20 +14,22 @@ describe('local Worker and migrated D1', () => {
 
   it('returns JSON 404 for API navigation and unsupported methods', async () => {
     for (const path of ['/api', '/api/missing', '/api/health/nested']) {
-      const response = await exports.default.fetch(`https://daily-stars.test${path}`, {
+      const response = await authenticatedFetch(`https://daily-stars.test${path}`, {
         headers: { Accept: 'text/html' },
       });
       expect(response.status).toBe(404);
       expect(await response.json()).toMatchObject({ error: { code: 'NOT_FOUND' } });
     }
-    const response = await exports.default.fetch('https://daily-stars.test/api/health', { method: 'POST' });
+    const response = await authenticatedFetch('https://daily-stars.test/api/health', {
+      method: 'POST', headers: { Origin: 'https://daily-stars.test', 'Content-Type': 'application/json' }, body: '{}',
+    });
     expect(response.status).toBe(404);
   });
 
   it('returns a non-cached JSON 503 when the migrated schema is unavailable', async () => {
     await env.DB.prepare('ALTER TABLE children RENAME TO unavailable_children').run();
     try {
-      const response = await exports.default.fetch('https://daily-stars.test/api/health');
+      const response = await authenticatedFetch('https://daily-stars.test/api/health');
       expect(response.status).toBe(503);
       expect(response.headers.get('Cache-Control')).toBe('no-store');
       expect(await response.json()).toEqual({

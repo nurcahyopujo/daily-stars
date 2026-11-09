@@ -5,6 +5,11 @@
   "compatibility_date": "2026-11-08",
   "workers_dev": false,
   "preview_urls": false,
+  "observability": { "enabled": false },
+  "vars": {
+    "TEAM_DOMAIN": "",
+    "POLICY_AUD": ""
+  },
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
@@ -17,5 +22,25 @@
       "database_id": "00000000-0000-0000-0000-000000000001",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "env": {
+    "staging": {
+      "name": "daily-stars-staging",
+      // Signed-out UI/assets/API challenges verified against this Access audience.
+      "workers_dev": true,
+      "preview_urls": false,
+      "vars": {
+        "TEAM_DOMAIN": "https://pujo-rizki-fam.cloudflareaccess.com",
+        "POLICY_AUD": "23a30e92201a566cf5c3c454a934406c95c0079790bf2d822870bc376c5911f8"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "daily-stars-staging",
+          "database_id": "b5cd4909-4557-4fd5-941e-b2bbaadbcb65",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 }

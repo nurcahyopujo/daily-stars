@@ -1,0 +1,23 @@
+.parent-access p + p { margin-top: var(--space-small); }
+.parent-access-email { overflow-wrap: anywhere; font-weight: 650; }
+.parent-access button, .parent-access-button {
+  display: inline-block;
+  margin-top: var(--space-medium);
+  padding: 10px 18px;
+  min-height: 44px;
+  border: 1px solid var(--color-action);
+  border-radius: var(--radius-control);
+  background: var(--color-action);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.6;
+  text-decoration: none;
+  cursor: pointer;
+}
+.parent-access button:focus-visible, .parent-access-button:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.parent-access-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--space-small); }
