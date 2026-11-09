@@ -22,6 +22,9 @@ A child's dated selection of templates, including their display order.
 **Activity date**:
 The household calendar date to which an activity outcome or one-off entry belongs, distinct from when a parent records or corrects it.
 
+**Effective date**:
+The first household calendar date on which a rule change applies. A scheduled rule change applies on the day after its acceptance date, which may differ from the date the parent pressed Save.
+
 **Outcome**:
 An activity's recorded result: done correctly, needs improvement, or unrecorded.
 
