@@ -1,3 +1,4 @@
+import { navigate } from './navigation';
 import { expect, test } from '@playwright/test';
 
 test.use({ baseURL: 'http://127.0.0.1:4174' });
@@ -14,6 +15,7 @@ test('local dev renders a synthetic parent without browser request interception'
     timezone: 'Asia/Jakarta',
   });
   await page.goto('/');
+  await navigate(page, 'Profile');
   await expect(page.getByRole('heading', { name: 'You’re signed in' })).toBeVisible();
   await expect(page.getByText('local-parent@example.test')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

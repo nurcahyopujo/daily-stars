@@ -4,5 +4,5 @@
     "lib": ["ES2022", "DOM"],
     "types": ["node"]
   },
-  "include": ["*.config.ts", "tests/browser"]
+  "include": ["*.config.ts", "tools", "tests/browser", "worker-configuration.d.ts"]
 }

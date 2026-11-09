@@ -1,3 +1,4 @@
+import { navigate } from './navigation';
 import { expect, test } from '@playwright/test';
 import { createServer } from 'node:http';
 
@@ -7,6 +8,11 @@ const parent = {
   timezone: 'Asia/Jakarta',
 };
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/children**', (route) => route.fulfill({ json: { today: parent.today, children: [] } }));
+  await page.route('**/api/templates', (route) => route.fulfill({ json: { today: parent.today, templates: [] } }));
+});
+
 test('built app denies anonymous API access and offers unavailable-state recovery', async ({ page, request }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -14,11 +20,12 @@ test('built app denies anonymous API access and offers unavailable-state recover
     status: 503, json: { error: { code: 'AUTH_UNAVAILABLE' } },
   }));
   await page.goto('/');
+  await navigate(page, 'Profile');
   await expect(page).toHaveTitle('Daily Stars');
-  await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'We couldn’t check your access' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/profile');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath('unavailable.png'), fullPage: true });
@@ -40,6 +47,7 @@ test('shows verified identity at phone width and signs out by navigation', async
     contentType: 'text/html', body: '<h1>Signed out fixture</h1>',
   }));
   await page.goto('/');
+  await navigate(page, 'Profile');
   await expect(page.getByRole('heading', { name: 'You’re signed in' })).toBeVisible();
   await expect(page.getByText(parent.email)).toBeVisible();
   await expect(page.getByText('Today: 2026-11-09 · Jakarta')).toBeVisible();
@@ -60,10 +68,11 @@ for (const challenge of ['unauthorized', 'forbidden', 'html']) {
       return route.fulfill({ status: challenge === 'unauthorized' ? 401 : 403, json: {} });
     });
     await page.goto('/');
+  await navigate(page, 'Profile');
     await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible();
-    expect(new URL(page.url()).pathname).toBe('/');
+    expect(new URL(page.url()).pathname).toBe('/profile');
     const signIn = page.getByRole('link', { name: 'Sign in' });
-    await expect(signIn).toHaveAttribute('href', '/');
+    await expect(signIn).toHaveAttribute('href', '/profile');
     await signIn.focus();
     await expect(signIn).toBeFocused();
     if (challenge === 'html') {
@@ -87,8 +96,9 @@ test('handles a real authentication redirect without following it', async ({ pag
     if (!address || typeof address === 'string') throw new Error('Redirect fixture has no port.');
     await page.route('**/api/me', (route) => route.continue({ url: `http://127.0.0.1:${address.port}/` }));
     await page.goto('/');
+  await navigate(page, 'Profile');
     await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible();
-    expect(new URL(page.url()).pathname).toBe('/');
+    expect(new URL(page.url()).pathname).toBe('/profile');
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
@@ -101,6 +111,7 @@ test('recovers from a failed fetch only when the parent retries', async ({ page 
     return requests === 1 ? route.abort() : route.fulfill({ json: parent });
   });
   await page.goto('/');
+  await navigate(page, 'Profile');
   await expect(page.getByRole('heading', { name: 'We couldn’t check your access' })).toBeVisible();
   expect(requests).toBe(1);
   await page.getByRole('button', { name: 'Try again' }).click();
@@ -110,22 +121,27 @@ test('recovers from a failed fetch only when the parent retries', async ({ page 
 
 test('clears identity and rechecks access on page restoration', async ({ page }) => {
   let requests = 0;
+  let expired = false;
   await page.route('**/api/me', (route) => {
     requests++;
-    return requests === 1 ? route.fulfill({ json: parent }) : route.fulfill({ status: 401, json: {} });
+    return expired ? route.fulfill({ status: 401, json: {} }) : route.fulfill({ json: parent });
   });
   await page.goto('/');
+  await navigate(page, 'Profile');
   await expect(page.getByText(parent.email)).toBeVisible();
+  expired = true;
   await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
   await expect(page.getByText(parent.email)).toHaveCount(0);
+  const beforeRestore = requests;
   await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
   await expect(page.getByRole('heading', { name: 'Sign in to continue' })).toBeVisible();
-  expect(requests).toBe(2);
+  expect(requests).toBeGreaterThan(beforeRestore);
 });
 
 test('does not display malformed identity data', async ({ page }) => {
   await page.route('**/api/me', (route) => route.fulfill({ json: { ...parent, email: 123 } }));
   await page.goto('/');
+  await navigate(page, 'Profile');
   await expect(page.getByRole('heading', { name: 'We couldn’t check your access' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0);
 });

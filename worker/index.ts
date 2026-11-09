@@ -1,10 +1,7 @@
 import { authenticateParent } from './auth';
-
-const json = (body: unknown, status = 200): Response =>
-  Response.json(body, {
-    status,
-    headers: { 'Cache-Control': 'no-store' },
-  });
+import { jakartaToday } from './calendar';
+import { ApiError, json, mutationBoundary } from './http';
+import { profileRoutes } from './profiles';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -14,20 +11,21 @@ export default {
       const parent = await authenticateParent(request, env);
       if (parent instanceof Response) return parent;
 
-      if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
-        if (request.headers.get('Origin') !== new URL(request.url).origin) {
-          return json({ error: { code: 'FORBIDDEN', message: 'A same-origin request is required.' } }, 403);
-        }
-        if (request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') {
-          return json({ error: { code: 'INVALID_REQUEST', message: 'A JSON body is required.' } }, 400);
-        }
-      }
+      const rejected = mutationBoundary(request);
+      if (rejected) return rejected;
 
       if (pathname === '/api/me' && request.method === 'GET') {
-        const date = new Intl.DateTimeFormat('en-CA', {
-          timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
-        }).format(new Date());
+        const date = jakartaToday(new Date());
         return json({ email: parent.email, today: date, timezone: 'Asia/Jakarta' });
+      }
+      try {
+        const response = await profileRoutes(request, env.DB, parent);
+        if (response) return response;
+      } catch (error) {
+        if (error instanceof ApiError) return json({ error: {
+          code: error.code, message: error.message, ...(error.current ? { current: error.current } : {}),
+        } }, error.status);
+        return json({ error: { code: 'UNAVAILABLE', message: 'Request unavailable. Check your connection and retry.' } }, 503);
       }
     }
 
