@@ -15,7 +15,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run db:migrate && npm run db:seed && npm run preview',
-    url: 'http://127.0.0.1:4173/api/health',
+    url: 'http://127.0.0.1:4173/',
     reuseExistingServer: false,
     timeout: 120_000,
   },

@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ParentAccess } from './features/auth/ParentAccess';
 import './styles.css';
 
 function App() {
@@ -13,11 +14,7 @@ function App() {
         <p className="eyebrow">A little progress, every day</p>
         <h1 id="welcome-title">Small steps.<br />Bright days.</h1>
         <p className="intro">A place for your family’s routines, daily activities, and points.</p>
-        <div className="empty-state">
-          <span className="empty-star" aria-hidden="true">☆</span>
-          <h2>Your family’s story starts here</h2>
-          <p>Child profiles and routines are coming next.</p>
-        </div>
+        <ParentAccess />
       </section>
       <footer>Every effort counts.</footer>
     </main>

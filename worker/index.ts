@@ -1,3 +1,5 @@
+import { authenticateParent } from './auth';
+
 const json = (body: unknown, status = 200): Response =>
   Response.json(body, {
     status,
@@ -5,8 +7,29 @@ const json = (body: unknown, status = 200): Response =>
   });
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
+
+    if (pathname === '/api' || pathname.startsWith('/api/')) {
+      const parent = await authenticateParent(request, env);
+      if (parent instanceof Response) return parent;
+
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+        if (request.headers.get('Origin') !== new URL(request.url).origin) {
+          return json({ error: { code: 'FORBIDDEN', message: 'A same-origin request is required.' } }, 403);
+        }
+        if (request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') {
+          return json({ error: { code: 'INVALID_REQUEST', message: 'A JSON body is required.' } }, 400);
+        }
+      }
+
+      if (pathname === '/api/me' && request.method === 'GET') {
+        const date = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date());
+        return json({ email: parent.email, today: date, timezone: 'Asia/Jakarta' });
+      }
+    }
 
     if (pathname === '/api/health' && request.method === 'GET') {
       try {

@@ -9,8 +9,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
+    "build:staging": "CLOUDFLARE_ENV=staging vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
-    "types": "wrangler types",
+    "types": "wrangler types --strict-vars=false",
     "typecheck": "npm run types && tsc -p tsconfig.app.json && tsc -p tsconfig.worker.json && tsc -p tsconfig.tools.json",
     "test": "vitest run",
     "test:browser": "playwright test",
@@ -19,6 +20,7 @@
     "check": "npm run typecheck && npm test && npm run build && npm run test:browser"
   },
   "dependencies": {
+    "jose": "6.2.16",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
