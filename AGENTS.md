@@ -14,3 +14,8 @@ read `docs/agents/triage-labels.md`.
 
 Use a single-context layout. Before exploring the codebase,
 read `docs/agents/domain.md`.
+
+### Frontend
+
+Before implementing or reviewing frontend components, styles, or interactions,
+read `docs/agents/frontend.md`.
