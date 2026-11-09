@@ -13,10 +13,20 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Pixel 7'] } },
     { name: 'webkit', use: { ...devices['iPhone 13'] } },
   ],
-  webServer: {
-    command: 'npm run db:migrate && npm run db:seed && npm run preview',
-    url: 'http://127.0.0.1:4173/',
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'npm run db:migrate && npm run db:seed && npm run preview',
+      // Even with the flag present, production preview must require authentication.
+      env: { MOCK_PARENT: '1' },
+      url: 'http://127.0.0.1:4173/',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      command: 'npm run dev -- --port 4174 --strictPort',
+      url: 'http://127.0.0.1:4174/',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
 });

@@ -15,7 +15,9 @@ npm run db:seed
 npm run dev
 ```
 
-Open the loopback URL printed by Vite. Without Access configuration, the shell offers recovery and every API request returns JSON 503. With configuration, every API route requires a valid Access JWT; missing/invalid identity returns 401. There is no local parent bypass. Tests supply synthetic signed assertions and mock provider keys or UI responses.
+Open the loopback URL printed by Vite. `npm run dev` automatically shows `local-parent@example.test` with the current Jakarta date; no email code is needed. `npm run dev:mock` remains an alias for the same command.
+
+The Vite dev middleware mocks only `GET /api/me` for loopback requests; other API routes still require valid authentication. It does not simulate real sign-out or session expiry: the mock always returns the synthetic parent. Use staging for actual Access login, logout and expiry tests. Production preview, builds and deployments retain JWT authentication; no Worker authentication code changes. Vite's [dev-server hook](https://vite.dev/guide/api-plugin#configureserver) does not run in builds or production preview. Without Access configuration, Worker API requests return JSON 503; with configuration, missing/invalid identity returns 401. Tests supply synthetic signed assertions and mock provider keys or UI responses.
 
 Authenticated `GET /api/me` returns `{ email, today, timezone }`, with the Jakarta date and `Asia/Jakarta` timezone. Authenticated `GET /api/health` queries migrated D1 and returns `{ "status": "ok", "database": "ok" }`; an unavailable database produces JSON 503. Authenticated unknown API paths return JSON 404. All API responses use `Cache-Control: no-store`. Mutation requests require same-origin `Origin` and JSON content type before routing; no mutation endpoints exist yet.
 
@@ -30,12 +32,13 @@ npx playwright install chromium webkit
 npm run check
 ```
 
-`check` generates Worker types from the configured compatibility date/bindings, type-checks the frontend/Worker/tooling, runs Cloudflare Vitest checks in workerd with migrated D1, builds production assets and Worker code, and runs phone-sized Chromium/WebKit checks against the local production preview. The browser runner applies local migrations and synthetic seeds before starting preview on port 4173. Tests use local synthetic data; do not point them at a remote or family database.
+`check` generates Worker types from the configured compatibility date/bindings, type-checks the frontend/Worker/tooling, runs Cloudflare Vitest checks in workerd with migrated D1, builds production assets and Worker code, and runs phone-sized Chromium/WebKit checks against production preview and the default dev server. The browser runner applies local migrations and synthetic seeds before starting preview on port 4173 and development on port 4174. Preview is deliberately started with the mock flag present to verify that it still requires authentication. Tests use local synthetic data; do not point them at a remote or family database.
 
 Useful individual commands:
 
 | Command | Purpose |
 | --- | --- |
+| `npm run dev` | Run the local UI with a synthetic parent session; other API routes remain protected |
 | `npm test` | Synthetic signed JWT security cases, Jakarta `/me`, real local D1, seed repeatability, foreign keys, authenticated health and JSON errors |
 | `npm run typecheck` | Generate bindings/runtime types and check TypeScript |
 | `npm run build` | Build static assets and the Worker |

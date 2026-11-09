@@ -7,7 +7,8 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "MOCK_PARENT=1 vite --host 127.0.0.1",
+    "dev:mock": "MOCK_PARENT=1 vite --host 127.0.0.1",
     "build": "vite build",
     "build:staging": "CLOUDFLARE_ENV=staging vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
