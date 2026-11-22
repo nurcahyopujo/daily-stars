@@ -1,3 +1,4 @@
+import { ruleRoutes } from './rules';
 import { scoring } from './scoring';
 import type { ChildIntent } from '../shared/profiles';
 import type { Parent } from './auth';
@@ -25,6 +26,8 @@ export async function profileRoutes(request: Request, db: D1Database, parent: Pa
   if (request.method === 'GET' && url.pathname === '/api/templates') {
     return json({ today, templates: await listTemplates(db, today) });
   }
+  const rules = await ruleRoutes(request, db, parent, today, url.pathname);
+  if (rules) return rules;
   const edit = /^\/api\/children\/([^/]+)$/.exec(url.pathname);
   if (!(request.method === 'POST' && url.pathname === '/api/children') && !(request.method === 'PATCH' && edit)) return null;
   const action = request.headers.get('Idempotency-Key');

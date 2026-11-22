@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react';
-import type { Child, ChildIntent } from '../../../shared/profiles';
+import type { AssignmentDetail, Child, ChildIntent, RuleSave, TemplateDetail } from '../../../shared/profiles';
 
-export class RequestError extends Error {
-  constructor(public status: number, public code: string, message: string, public current?: Child) {
+export class RequestError<T = Child> extends Error {
+  constructor(public status: number, public code: string, message: string, public current?: T) {
     super(message);
   }
 }
@@ -82,4 +82,54 @@ export function retryChild() {
 export function applyChildChange() {
   if (state.status !== 'conflict' || state.intent.kind !== 'edit') return;
   return send({ action: crypto.randomUUID(), intent: { ...state.intent, expectedRevision: state.current.revision } });
+}
+
+type RuleIntent = { path: string; method: 'POST' | 'PUT'; body: object; label: string };
+type SubmittedRule = { action: string; intent: RuleIntent };
+type RuleState =
+  | { status: 'idle' }
+  | (SubmittedRule & { status: 'saving' })
+  | (SubmittedRule & { status: 'uncertain'; signInRequired: boolean })
+  | (SubmittedRule & { status: 'rejected'; message: string; current?: AssignmentDetail | TemplateDetail })
+  | (SubmittedRule & { status: 'success'; result: RuleSave });
+
+let ruleState: RuleState = { status: 'idle' };
+const ruleListeners = new Set<() => void>();
+function publishRule(next: RuleState) { ruleState = next; ruleListeners.forEach(listener => listener()); }
+function subscribeRule(listener: () => void) {
+  ruleListeners.add(listener);
+  return () => { ruleListeners.delete(listener); };
+}
+export function useRuleSave() { return useSyncExternalStore(subscribeRule, () => ruleState); }
+export function clearRuleSave() { publishRule({ status: 'idle' }); }
+export function resumeRuleSave() {
+  if (ruleState.status === 'uncertain' && ruleState.signInRequired) publishRule({ ...ruleState, signInRequired: false });
+}
+
+async function sendRule(submitted: SubmittedRule) {
+  publishRule({ ...submitted, status: 'saving' });
+  const { path, method, body } = submitted.intent;
+  try {
+    const result = await requestJson<RuleSave>(path, {
+      method, headers: { 'Content-Type': 'application/json', 'Idempotency-Key': submitted.action },
+      body: JSON.stringify(body),
+    });
+    if (!result?.id || !result.effectiveDate || !Number.isSafeInteger(result.revision)) throw new Error('Invalid save response.');
+    if ('action' in ruleState && ruleState.action === submitted.action) publishRule({ ...submitted, status: 'success', result });
+  } catch (error) {
+    if (!('action' in ruleState) || ruleState.action !== submitted.action) return;
+    if (error instanceof RequestError && [400, 404, 409, 422].includes(error.status)) {
+      publishRule({ ...submitted, status: 'rejected', message: error.message,
+        current: error.code === 'STALE_EDIT' ? (error as RequestError<AssignmentDetail | TemplateDetail>).current : undefined });
+    } else publishRule({ ...submitted, status: 'uncertain', signInRequired: error instanceof RequestError && error.status === 401 });
+  }
+}
+
+export function submitRule(intent: RuleIntent) {
+  if (ruleState.status === 'saving' || ruleState.status === 'uncertain') return;
+  return sendRule({ action: crypto.randomUUID(), intent });
+}
+
+export function retryRule() {
+  if (ruleState.status === 'uncertain') return sendRule({ action: ruleState.action, intent: ruleState.intent });
 }

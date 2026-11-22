@@ -4,7 +4,7 @@ import type { Child, TemplateSummary } from '../../shared/profiles';
 
 const today = '2026-11-09';
 const currentChild: Child = { id: 'child-a', displayName: 'Robin', startDate: '2026-11-01', archiveEffectiveDate: null, revision: 1 };
-const template = (id: string, name: string): TemplateSummary => ({ id, current: { name, revision: 1, effectiveDate: today, retired: false }, pending: null });
+const template = (id: string, name: string): TemplateSummary => ({ id, current: { name, revision: 1, effectiveDate: today, retired: false, activities: [] }, pending: null });
 
 async function fixture(page: Page, options: { children?: Child[]; loseResponse?: boolean; stale?: boolean; failRead?: boolean; challengeWrite?: boolean } = {}) {
   let children = options.children ?? [];
@@ -69,7 +69,7 @@ test('hamburger menu switches between the Home hero, children and the sign-in Pr
   await burger.focus();
   await page.keyboard.press('Enter');
   await expect(navigation).toBeVisible();
-  await expect(navigation.getByRole('link')).toHaveText(['Home', 'Manage children', 'Profile']);
+  await expect(navigation.getByRole('link')).toHaveText(['Home', 'Manage children', 'Templates & assignments', 'Profile']);
   await expect(navigation.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page');
   await page.screenshot({ path: testInfo.outputPath('hamburger-menu.png'), fullPage: true });
   await navigation.getByRole('link', { name: 'Home', exact: true }).focus();

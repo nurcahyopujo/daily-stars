@@ -18,7 +18,7 @@ async function getChild(db: D1Database, id: string) {
 }
 
 // Resolve eligible versions in SQL so creation rechecks eligibility inside its transaction.
-const eligibleTemplates = `SELECT tv.template_id FROM template_versions tv
+export const eligibleTemplates = `SELECT tv.template_id FROM template_versions tv
   WHERE tv.effective_date <= ? AND tv.retired = 0 AND tv.revision = (
     SELECT v.revision FROM template_versions v WHERE v.template_id = tv.template_id
       AND v.effective_date <= ? ORDER BY v.effective_date DESC, v.revision DESC LIMIT 1)`;
@@ -32,12 +32,14 @@ async function templatesEligible(db: D1Database, ids: string[], today: string) {
 
 export async function listTemplates(db: D1Database, today: string): Promise<TemplateSummary[]> {
   const rows = await db.prepare(`SELECT template_id AS id, name, revision,
-    effective_date AS effectiveDate, retired FROM template_versions
-    ORDER BY template_id, effective_date, revision`).all<Omit<TemplateVersion, 'retired'> & { id: string; retired: number }>();
+    effective_date AS effectiveDate, retired, activities_json AS activitiesJson FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY template_id, effective_date <= ?
+        ORDER BY effective_date DESC, revision DESC) AS rank FROM template_versions
+    ) WHERE rank = 1 ORDER BY template_id, effective_date, revision`).bind(today).all<Omit<TemplateVersion, 'retired' | 'activities'> & { id: string; retired: number; activitiesJson: string }>();
   const summaries = new Map<string, TemplateSummary>();
   for (const row of rows.results) {
     const summary = summaries.get(row.id) ?? { id: row.id, current: null, pending: null };
-    const version = { name: row.name, revision: row.revision, effectiveDate: row.effectiveDate, retired: Boolean(row.retired) };
+    const version = { name: row.name, revision: row.revision, effectiveDate: row.effectiveDate, retired: Boolean(row.retired), activities: JSON.parse(row.activitiesJson) };
     if (row.effectiveDate <= today) summary.current = version;
     else summary.pending = version;
     summaries.set(row.id, summary);

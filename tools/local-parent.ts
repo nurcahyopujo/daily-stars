@@ -1,10 +1,11 @@
+import { join } from 'node:path';
 import { getPlatformProxy } from 'wrangler';
 import type { Plugin } from 'vite';
 import { jakartaToday } from '../worker/calendar';
 import { ApiError, json, mutationBoundary } from '../worker/http';
 import { profileRoutes } from '../worker/profiles';
 
-export function localParent(): Plugin {
+export function localParent(databasePath?: string): Plugin {
   return {
     name: 'local-parent-session',
     apply: 'serve',
@@ -20,7 +21,8 @@ export function localParent(): Plugin {
         const session = path === '/api/me' && incoming.method === 'GET';
         const profiles = (path === '/api/children' && ['GET', 'POST'].includes(incoming.method ?? ''))
           || (/^\/api\/children\/[^/]+\/days\//.test(path) && ['GET','POST','PATCH','PUT'].includes(incoming.method ?? ''))
-          || (path === '/api/templates' && incoming.method === 'GET')
+          || (path === '/api/templates' && ['GET', 'POST'].includes(incoming.method ?? ''))
+          || (/^\/api\/(templates\/[^/]+|children\/[^/]+\/assignments)$/.test(path) && ['GET', 'PUT'].includes(incoming.method ?? ''))
           || (/^\/api\/children\/[^/]+$/.test(path) && incoming.method === 'PATCH');
         if (!loopback || !localHost || (!session && !profiles)) { next(); return; }
         const parent = { sub: 'local-synthetic-parent', email: 'local-parent@example.test' };
@@ -42,7 +44,12 @@ export function localParent(): Plugin {
             if (rejected) result = rejected;
             else {
               // Explicitly local bindings; never select a remote or staging database for this mock.
-              platform ??= getPlatformProxy<{ DB: D1Database }>({ configPath: './wrangler.jsonc', remoteBindings: false });
+              platform ??= getPlatformProxy<{ DB: D1Database }>({
+                configPath: './wrangler.jsonc',
+                remoteBindings: false,
+                // Wrangler's CLI and the Vite plugin append v3 to their persistence directory.
+                persist: databasePath ? { path: join(databasePath, 'v3') } : undefined,
+              });
               const proxy = await platform;
               result = await profileRoutes(request, proxy.env.DB, parent) ?? json({ error: { code: 'NOT_FOUND' } }, 404);
             }

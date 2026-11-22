@@ -1,52 +1,24 @@
+import { TemplatePicker } from './TemplatePicker';
+import { useHouseholdProfiles } from './useHouseholdProfiles';
 import { ScoreDay, Stars } from './ScoreDay';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Child, TemplateSummary } from '../../../shared/profiles';
-import { applyChildChange, clearChildSave, requestJson, RequestError, retryChild, submitChild, useChildSave } from './requests';
+import { useEffect, useRef, useState } from 'react';
+import type { Child } from '../../../shared/profiles';
+import { applyChildChange, clearChildSave, retryChild, submitChild, useChildSave } from './requests';
 import './child-profiles.css';
 
-type Profiles = { today: string; children: (Child & {total?: number})[] };
 type Editor = { child: Child | null; name: string; templates: string[]; archive: boolean };
 
 export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => void }) {
-  const [data, setData] = useState<Profiles | null>(null);
-  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, templates, loading, error, load } = useHouseholdProfiles(onSessionExpired);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [tab, setTab] = useState<'active' | 'archived'>('active');
   const save = useChildSave();
-  const controller = useRef<AbortController | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const nickname = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const restoreFocus = useRef(false);
   const locked = ['saving', 'uncertain', 'conflict'].includes(save.status);
-
-  const load = useCallback(async () => {
-    controller.current?.abort();
-    const current = new AbortController();
-    controller.current = current;
-    setLoading(true);
-    setError('');
-    try {
-      const [profiles, routines] = await Promise.all([
-        requestJson<Profiles>('/api/children?includeArchived=true', { signal: current.signal }),
-        requestJson<{ templates: TemplateSummary[] }>('/api/templates', { signal: current.signal }),
-      ]);
-      if (!current.signal.aborted) { setData(profiles); setTemplates(routines.templates); }
-    } catch (failure) {
-      if (!current.signal.aborted) {
-        if (failure instanceof RequestError && failure.status === 401) onSessionExpired();
-        else setError('Couldn’t load child profiles. Check your connection and try again.');
-      }
-    } finally { if (!current.signal.aborted) setLoading(false); }
-  }, [onSessionExpired]);
-
-  useEffect(() => {
-    void load();
-    return () => controller.current?.abort();
-  }, [load]);
 
   useEffect(() => {
     if (save.status === 'success') {
@@ -99,14 +71,6 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
     setEditor({ child, name: child?.displayName ?? '', templates: [], archive: false });
   }
 
-  function moveTemplate(id: string, direction: number) {
-    if (!editor) return;
-    const ordered = [...editor.templates];
-    const index = ordered.indexOf(id);
-    [ordered[index], ordered[index + direction]] = [ordered[index + direction], ordered[index]];
-    setEditor({ ...editor, templates: ordered });
-  }
-
   const available = templates.filter((template) => template.current && !template.current.retired);
   const active = data?.children.filter((child) => !child.archiveEffectiveDate || child.archiveEffectiveDate > data.today) ?? [];
   const archived = data?.children.filter((child) => child.archiveEffectiveDate && child.archiveEffectiveDate <= data.today) ?? [];
@@ -114,7 +78,7 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
   tomorrow?.setUTCDate(tomorrow.getUTCDate() + 1);
   const archiveDate = tomorrow?.toISOString().slice(0, 10);
 
-  function childRow(child: Profiles['children'][number]) {
+  function childRow(child: Child & { total?: number }) {
     const isArchived = Boolean(child.archiveEffectiveDate && data && child.archiveEffectiveDate <= data.today);
     return <li className="child-profiles-card" key={child.id}>
       <div><h2>{child.displayName}</h2>{child.total !== undefined && <p><Stars value={child.total}/> total</p>}<p>Started {child.startDate}</p>
@@ -133,7 +97,7 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
       <button ref={addButton} type="button" disabled={locked || loading} onClick={(event) => open(null, event.currentTarget)}>Add child</button>
     </div>
     {loading && <p role="status">Loading child profiles…</p>}
-    {error && <div role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>Reload profiles</button></div>}
+    {error && <div role="alert"><p>Couldn’t load child profiles. Check your connection and try again.</p><button type="button" onClick={() => void load()}>Reload profiles</button></div>}
     {data && <>
       <p className="child-profiles-date">As of {data.today} · Jakarta</p>
       <div className="child-profiles-tabs" role="tablist" aria-label="Child status" onKeyDown={(event) => {
@@ -183,24 +147,10 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
           aria-describedby={`nickname-help${save.status === 'rejected' ? ' child-profile-save-error' : ''}`} />
         <p id="nickname-help">1–60 characters. The current nickname also labels history.</p>
         {!editor.child && <>
-          <fieldset className="child-profiles-templates" aria-describedby={save.status === 'rejected' ? 'child-profile-save-error' : undefined}><legend>Initial templates (optional)</legend>
-            <p>Available immediately. Choose every template needed for day one, in display order.</p>
-            {!available.length && <p>No templates available yet. You can create a child without a routine.</p>}
-            {available.map((template) => <label className="child-profiles-template" key={template.id}>
-              <input type="checkbox" checked={editor.templates.includes(template.id)} onChange={(event) => setEditor({
-                ...editor, templates: event.target.checked ? [...editor.templates, template.id] : editor.templates.filter((id) => id !== template.id),
-              })} />
-              <span>{template.current!.name}{template.pending && <small>Scheduled change: {template.pending.effectiveDate}</small>}</span>
-            </label>)}
-            {editor.templates.length > 0 && <ol className="child-profiles-order" aria-label="Initial template order">
-              {editor.templates.map((id, index) => <li key={id}>
-                <span>{available.find((template) => template.id === id)?.current?.name ?? 'Unavailable template'}</span>
-                <button type="button" disabled={index === 0} onClick={() => moveTemplate(id, -1)} aria-label={`Move template ${index + 1} up`}>↑</button>
-                <button type="button" disabled={index === editor.templates.length - 1} onClick={() => moveTemplate(id, 1)} aria-label={`Move template ${index + 1} down`}>↓</button>
-                <button type="button" onClick={() => setEditor({ ...editor, templates: editor.templates.filter((item) => item !== id) })} aria-label={`Remove template ${index + 1}`}>Remove</button>
-              </li>)}
-            </ol>}
-          </fieldset>
+          <p>Available immediately. Choose every template needed for day one, in display order.</p>
+          <TemplatePicker title="Initial templates (optional)" selected={editor.templates}
+            onChange={(templates) => setEditor({ ...editor, templates })}
+            options={available.map(template => ({ id: template.id, version: template.current!, pendingDate: template.pending?.effectiveDate }))}/>
           <p>New profiles start at 0 points. An empty routine still permits one-off points.</p>
         </>}
         {editor.child && !editor.child.archiveEffectiveDate && <label className="child-profiles-template">

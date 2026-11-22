@@ -1,14 +1,16 @@
+import { RuleSettings } from '../children/RuleSettings';
 import { clearScoreSaves } from '../children/ScoreDay';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { loadSession, type SessionState } from './session';
 import './parent-access.css';
 import { ChildProfiles } from '../children/ChildProfiles';
-import { clearChildSave, resumeChildSave, useChildSave } from '../children/requests';
+import { clearChildSave, clearRuleSave, resumeChildSave, resumeRuleSave, useChildSave, useRuleSave } from '../children/requests';
 
 const pages = [
   { id: 'home', label: 'Home', path: '/' },
   { id: 'children', label: 'Manage children', path: '/children' },
+  { id: 'templates', label: 'Templates & assignments', path: '/templates' },
   { id: 'profile', label: 'Profile', path: '/profile' },
 ] as const;
 
@@ -27,7 +29,11 @@ export function ParentAccess() {
   const menuButton = useRef<HTMLButtonElement>(null);
   const lastEmail = useRef<string | null>(null);
   const childSave = useChildSave();
-  const saveLocked = ['saving', 'uncertain', 'conflict'].includes(childSave.status);
+  const ruleSave = useRuleSave();
+  const childSaveLocked = ['saving', 'uncertain', 'conflict'].includes(childSave.status);
+  const ruleSaveLocked = ruleSave.status === 'saving' || ruleSave.status === 'uncertain';
+  const saveLocked = childSaveLocked || ruleSaveLocked;
+  const managementPage = childSaveLocked ? 'children' : ruleSaveLocked ? 'templates' : menu;
   const signInPath = window.location.pathname + window.location.search;
 
   useEffect(() => {
@@ -56,8 +62,9 @@ export function ParentAccess() {
       loadSession(signal).then((result) => {
         if (!signal.aborted) {
           if (result.status === 'signed-in') {
-            if (lastEmail.current && lastEmail.current !== result.parent.email) { clearChildSave(); clearScoreSaves(); }
+            if (lastEmail.current && lastEmail.current !== result.parent.email) { clearChildSave(); clearScoreSaves(); clearRuleSave(); }
             resumeChildSave();
+            resumeRuleSave();
             lastEmail.current = result.parent.email;
           }
           setSession(result);
@@ -87,6 +94,7 @@ export function ParentAccess() {
   const signOut = () => {
     clearScoreSaves();
     clearChildSave();
+    clearRuleSave();
     flushSync(() => setSession({ status: 'loading' }));
     window.location.assign('/cdn-cgi/access/logout');
   };
@@ -112,9 +120,9 @@ export function ParentAccess() {
         <nav id="main-menu" className="parent-navigation" aria-label="Main menu" hidden={!menuOpen}>
           {pages.map((page) =>
             <a key={page.id} href={page.path} aria-current={menu === page.id ? 'page' : undefined}
-              aria-disabled={saveLocked || (page.id === 'children' && session.status !== 'signed-in')}
+              aria-disabled={saveLocked || ((page.id === 'children' || page.id === 'templates') && session.status !== 'signed-in')}
               onClick={(event) => {
-                if (saveLocked || (page.id === 'children' && session.status !== 'signed-in')) {
+                if (saveLocked || ((page.id === 'children' || page.id === 'templates') && session.status !== 'signed-in')) {
                   event.preventDefault();
                   return;
                 }
@@ -144,7 +152,7 @@ export function ParentAccess() {
       {session.status === 'sign-in-required' && <>
         <h2>Sign in to continue</h2>
         <p>Use your approved parent email to open Daily Stars.</p>
-        {childSave.status === 'uncertain' && <p>Save not confirmed. Keep this page open to retain its retry key. Reopening the app discards it.</p>}
+        {(childSave.status === 'uncertain' || ruleSave.status === 'uncertain') && <p>Save not confirmed. Keep this page open to retain its retry key. Reopening the app discards it.</p>}
         <button type="button" onClick={() => setAttempt(attempt + 1)}>Check access</button>
         <a className="parent-access-button" href={signInPath}>Sign in</a>
       </>}
@@ -163,7 +171,8 @@ export function ParentAccess() {
       <h1>Small steps.<br />Bright days.</h1>
       <p className="intro">A place for your family’s routines, daily activities, and points.</p>
     </section>}
-    {session.status === 'signed-in' && (menu === 'children' || saveLocked) && <ChildProfiles onSessionExpired={sessionExpired} />}
+    {session.status === 'signed-in' && managementPage === 'children' && <ChildProfiles onSessionExpired={sessionExpired} />}
+    {session.status === 'signed-in' && managementPage === 'templates' && <RuleSettings onSessionExpired={sessionExpired} />}
     {session.status === 'signed-in' && menu === 'not-found' && <section aria-label="Page not found">
       <h1>Page not found</h1><p>Choose a page from the main menu.</p>
     </section>}

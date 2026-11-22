@@ -37,16 +37,23 @@ Example day boundary. `2026-11-07T16:59:59Z` belongs to November 7 in Jakarta. `
 
 ### F2. Child profiles
 
-- Settings can create a profile with a display name or nickname and an optional list of initial templates. Suggested nickname limit is 1–60 trimmed characters. Create the child and initial assignments together so the first routine is available immediately. An empty list is valid and still permits one-off points. Choose all templates needed for day one in this form. Subsequent assignment edits begin tomorrow.
+- Settings can create a profile with a display name or nickname and an optional list of initial templates. Suggested nickname limit is 1–60 trimmed characters. Create the child and initial assignments together so the first routine is available immediately. An empty list is valid and still permits one-off points. Choose all templates needed for day one in this form. Subsequent assignment edits default to tomorrow. Parents can also add templates starting today from **Templates & assignments**.
 - Settings can rename the display name. The ID remains stable. The current name labels both current and historical screens.
 - Recommended archive behavior is effective tomorrow. Starting on that date, remove the child from the default dashboard and stop new dates. Keep an **Archived children** list with access to prior dates, scores, and corrections.
 - **Accept when** a new child has a zero total, initial assignments appear today, and renaming or archiving preserves prior entries.
 
 ### F3. Activity templates and scheduling
 
+- On the **Templates & assignments** page, parents manage a shared template's activities and can select and reorder templates for each existing child. Show when the child's assignment changes take effect.
+- Saving a template requires at least one activity. When a parent removes the last activity from an existing template, offer **Retire template**.
+- Before saving an edit or retiring a template, show the children scheduled to use it on the effective date, accounting for already-scheduled assignment changes.
+- Parents can cancel a scheduled retirement until its effective date. Cancellation restores the latest saved plan for that date before retirement. For example, if Tuesday’s breakfast reward was changed from two to three stars before retirement was scheduled, canceling retirement on Monday preserves the three-star reward. Once effective, retirement is final. To restart the routine, create a new template and explicitly assign it to children.
+- Active templates may share a name. Show a short activity preview for each template in the assignment picker.
+- On a phone, list activities in checklist order. Expand one row at a time to edit its label, reward, optional penalty, and weekdays. Provide **Move up** and **Move down** controls. Keep edits together until the parent reviews and saves the whole template once.
+
 A template contains a name and an ordered list of activity definitions. Each activity has a label, a reward, an optional penalty magnitude, and scheduled weekdays. Default to all seven days. Use ISO weekdays `1` through `7` for Monday through Sunday. Omitting weekdays on creation defaults to all seven. A provided list must contain one or more distinct weekdays. Suggested limits are 80 characters per template or activity name and 30 activities per template.
 
-- A new template’s first revision is effective today. It can be selected in a new child’s setup today. Assignment edits on an existing child are effective tomorrow.
+- A new template’s first revision is effective today. It can be selected in a new child’s setup today. Assignment edits on an existing child default to tomorrow. **Start new templates today** appends selected templates to today’s assignment and to an already-scheduled assignment, preserving the order and other changes in each plan. Removing or reordering existing templates takes effect tomorrow.
 - Save a complete immutable template revision when an existing template is edited. It is effective tomorrow. Preserve the activity ID when renaming, reordering, or changing points or weekdays. Allocate a new ID for a genuinely new activity.
 - Use a stable template ID and a dated assignment set for each child. Assigning the same template twice is invalid. Reject assignment edits whose effective date is on or after the child’s archive date. Different templates may contain identically named activities. Display the template name next to those rows and score them separately.
 - Removing an activity, unassigning a template, or retiring a template takes effect tomorrow. Retiring hides it from eligible assignments after its effective date. Existing assignments to a retired template produce no checklist rows from that date. A retired template remains available to resolve earlier dates.
@@ -94,7 +101,8 @@ A template contains a name and an ordered list of activity definitions. Each act
 |---|---|
 | **Home** | Jakarta date and one card per active child. Each card shows running total, today’s net points, and pending activity count. Tap to open today. |
 | **Child day** | Compact native child dropdown, date picker, net points, activity list grouped by template, one-off entries, and an obvious **Add entry** action. Recorded items expose corrections and history. |
-| **Settings** | Children, templates, assignments, and archived children. Distinguish today’s rules from scheduled changes. |
+| **Manage children** | Create and edit child profiles, choose initial templates, and view archived children. |
+| **Templates & assignments** | Manage shared activity templates and existing children’s assignments. Distinguish today’s rules from scheduled changes. |
 
 - For an empty household, show **Add child** and a path to **Create template**. For a day without scheduled activities, show the empty state and keep one-off entry available. Show saving, success, retry, and stale-edit states beside the relevant control.
 - Use English labels. Child switching preserves the selected activity date, clamped to the destination child's eligible dates. Archived children remain accessible through Settings and identified while viewing history, outside the active-child list. Support checklists longer than three activities; the prototype's eight activities and four active children are demonstration sizes, not product limits.
@@ -135,13 +143,13 @@ Audit fields are `actor_id`, `actor_email`, and `recorded_at_utc`. Store the sig
 
 1. Generate one client action ID per user intent. Reuse it after a timeout or an ambiguous network error.
 2. On receipt of a mutation, verify identity and validate the request. If the receipt already exists and the fingerprint matches, return the original success response. If the action ID was reused with different input, return a conflict.
-3. Compare the submitted `expectedRevision` to the latest committed revision. Zero denotes a daily occurrence with no previous score. A new one-off gets a new ID. Build the proposed revision as current + 1.
+3. Compare the submitted `expectedRevision` to the latest committed revision. Zero denotes a daily occurrence with no previous score or an existing child with no assignment history. A new one-off gets a new ID. Build the proposed revision as current + 1.
 4. Commit the new data and receipt in one D1 batch. Enforce the expected revision inside the write. For append-only streams, use the unique next revision key to make a concurrent append fail. For guarded updates to a mutable row, a zero-row update must abort the batch before the receipt can commit. Do not rely on a check performed before the batch alone. For scheduled rule saves, enforce the date guard and retry rules below inside the same transaction.
 5. If the write conflicts, check for a matching receipt again to distinguish an exact retry from a competing action. For a genuine stale edit, return `409` with the current revision and let the parent review it. Replays can return an older success receipt, so refresh current data after every acknowledged save.
 
 **Scheduled rule acceptance at midnight.** Approved in [issue #6](https://github.com/nurcahyopujo/daily-stars/issues/6); rationale is in [ADR 0001](docs/adr/0001-scheduled-rule-acceptance.md). This explicitly replaces the original physical commit-time midnight requirement.
 
-- Acceptance occurs at the final database date-guard evaluation, conditional on the transaction committing successfully. The effective date is the following Jakarta calendar day. A guard that passes just before midnight may commit afterward with that same effective date.
+- Acceptance occurs at the final database date-guard evaluation, conditional on the transaction committing successfully. The effective date for scheduled changes is the following Jakarta calendar day. When a parent explicitly adds templates starting today, use the acceptance date and update any pending assignment in the same transaction. A guard that passes just before midnight may commit afterward with that same effective date.
 - Bind the attempt's Jakarta day boundaries and effective date together. The final guard must check database time against the half-open interval from that day's start up to, but excluding, the next day's start. Exact midnight belongs to the new day. A stale attempt must roll back both the edit and its receipt.
 - Following an ambiguous outcome or conflict, check for a matching success receipt before deciding whether to retry or report a stale edit. A matching receipt returns the original result and effective date, including after midnight. Server-derived dates, generated IDs, and audit timestamps must not change the fingerprint of the submitted intent.
 - With no matching success receipt, a confirmed date-guard rollback, and an unchanged expected revision, recompute server-derived dates and allow one automatic midnight retry per request. Preserve the action ID and submitted input. Enforce revision and date guards again on that retry. If it still cannot complete, retain the action ID and offer Retry. A changed revision returns `409` and requires the parent to review the latest rules.
@@ -162,11 +170,11 @@ All paths below begin with `/api`. Use JSON, same-origin credentials, and `Cache
 | `POST /children` | `displayName, initialTemplateIds[]` | `201` with child ID, start date, and child revision |
 | `PATCH /children/:childId` | `expectedRevision` and `displayName` and/or `archive: true` | Child ID, revision, and effective archive date if set |
 | `GET /templates` | — | Template summaries, today’s version, pending version metadata |
-| `GET /templates/:templateId` | — | Full today and next scheduled definitions with latest revision |
+| `GET /templates/:templateId` | — | Full today and next scheduled definitions with latest revision and children assigned on the next date |
 | `POST /templates` | `name, activities[]` | `201` with template ID, revision, effective date |
-| `PUT /templates/:templateId` | `expectedRevision, name, activities[], retired` | Template ID, revision, effective date |
+| `PUT /templates/:templateId` | `expectedRevision, name, activities[], retired` for a definition save, or `expectedRevision, operation` with `retire` or `cancelRetirement` | Template ID, revision, effective date |
 | `GET /children/:childId/assignments` | — | Today’s and next scheduled template IDs, latest revision |
-| `PUT /children/:childId/assignments` | `expectedRevision, templateIds[]` | Child ID, assignment revision, effective date |
+| `PUT /children/:childId/assignments` | `expectedRevision, templateIds[], startToday?` | Child ID, latest assignment revision, effective date. With `startToday: true`, the IDs are additions. |
 | `GET /children/:childId/days/:date` | — | Day summary, checklist and one-offs |
 | `PUT /children/:childId/days/:date/activities/:templateId/:activityId` | `expectedRevision, outcome` | Occurrence identifiers, revision, outcome, points |
 | `GET /children/:childId/days/:date/activities/:templateId/:activityId/history` | — | Score revisions newest first |

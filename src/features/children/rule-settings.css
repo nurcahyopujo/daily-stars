@@ -1,0 +1,25 @@
+.rule-settings { overflow-wrap: anywhere; }
+.rule-settings h2 { font-size: 18px; margin: 20px 0 8px; }
+.rule-settings .child-profiles-card button { margin-block: 8px 0; }
+.rule-editor {
+  margin-top: 20px;
+  padding: clamp(12px, 4vw, 20px);
+  border: 1px solid var(--color-border, #dce1d5);
+  border-radius: var(--radius-control);
+  background: var(--color-surface, #fdfcf8);
+}
+.rule-editor summary { cursor: pointer; padding-block: 8px; }
+.rule-editor label { margin-top: 12px; }
+.rule-activities { padding-left: 20px; }
+.rule-activities > li { padding-block: 8px; }
+.rule-activities .rule-activity-toggle { text-align: left; background: transparent; color: var(--color-action); }
+.rule-editor .rule-weekdays { display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 16px; }
+.rule-editor .rule-weekdays label { align-items: center; min-height: 44px; margin: 0; }
+.child-profiles .rule-editor button[type=button] {
+  background: transparent;
+  color: var(--color-action);
+}
+.child-profiles .rule-editor button[type=button]:not(:disabled):hover {
+  background: var(--color-action-soft);
+}
+.rule-editor .child-profiles-order li > span { display: block; margin-bottom: var(--space-small); }

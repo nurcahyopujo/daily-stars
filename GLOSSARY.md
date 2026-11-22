@@ -11,7 +11,7 @@ A child profile whose activities and points parents track independently.
 An approved adult who can manage household routines and record or correct points.
 
 **Template**:
-A named, ordered set of activities that can be shared by multiple children.
+A named, ordered set of one or more activities that can be shared by multiple children.
 
 **Activity**:
 A routine item with a reward, an optional penalty, and scheduled weekdays.
