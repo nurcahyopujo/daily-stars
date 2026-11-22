@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ActivityReviewData, DateRange, OutcomeCounts } from '../../../shared/activity-review';
 import type { Child } from '../../../shared/profiles';
 import { requestJson, RequestError } from './requests';
@@ -38,6 +38,7 @@ function ActivityOutcomes({ activities }: { activities: ActivityReviewData['acti
     if (matches) matches.push(activity.stream);
     else namesakes.set(key, [activity.stream]);
   }
+  for (const matches of namesakes.values()) matches.sort();
   return <>
     <h2>Activity outcomes</h2>
     {!activities.length && <p>No activities were scheduled in either period.</p>}
@@ -66,6 +67,7 @@ export function ActivityReview({ child, onSessionExpired }: { child: Child; onSe
   const [data, setData] = useState<ActivityReviewData | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const periodControl = useRef<HTMLSelectElement>(null);
   const day = new URLSearchParams(location.search).get('date');
   const dayQuery = new URLSearchParams({ day: child.id, ...(day ? { date: day } : {}) });
 
@@ -89,7 +91,7 @@ export function ActivityReview({ child, onSessionExpired }: { child: Child; onSe
       <a href={'/children?' + dayQuery}>← Back to day</a>
       <h1 id="activity-review-title">{child.displayName}’s activity review</h1>
       <label htmlFor="activity-review-period">Review period</label>
-      <select id="activity-review-period" value={period} onChange={(event) => {
+      <select id="activity-review-period" ref={periodControl} value={period} onChange={(event) => {
         setData(null);
         setError(false);
         setPeriod(event.target.value);
@@ -101,6 +103,7 @@ export function ActivityReview({ child, onSessionExpired }: { child: Child; onSe
       {error && <div role="alert">
         <p>Couldn’t load the activity review. Check your connection and try again.</p>
         <button type="button" onClick={() => {
+          periodControl.current?.focus();
           setError(false);
           setAttempt(attempt + 1);
         }}>Reload review</button>

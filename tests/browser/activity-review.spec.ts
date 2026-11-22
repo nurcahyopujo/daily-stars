@@ -3,15 +3,7 @@ import { seedBrowserDatabase } from './database';
 
 const origin = 'http://127.0.0.1:4174';
 
-function householdToday() {
-  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta', dateStyle: 'short' }).format(new Date());
-}
-
-function daysAgo(today: string, days: number) {
-  const date = new Date(today + 'T00:00:00Z');
-  date.setUTCDate(date.getUTCDate() - days);
-  return date.toISOString().slice(0, 10);
-}
+test.use({ extraHTTPHeaders: { 'x-daily-stars-test-clock': 'fixed' } });
 
 async function openDay(page: Page, name: string) {
   await page.goto(origin + '/children');
@@ -32,71 +24,69 @@ async function openReview(page: Page, name: string) {
   await openReviewFromDay(page, name);
 }
 
-test('parent reviews completed household days and switches to four weeks', async ({ page, request, context }) => {
-  const today = householdToday();
-  const name = 'Review periods ' + crypto.randomUUID();
-  const child = await request.post(origin + '/api/children', {
-    headers: { Origin: origin, 'Idempotency-Key': crypto.randomUUID() },
-    data: { displayName: name },
-  });
-  expect(child.status()).toBe(201);
+test('parent reviews completed household days and switches to four weeks', async ({ page, context }, info) => {
+  const id = crypto.randomUUID();
+  const name = 'LongReviewNicknameWithoutSpaces' + id.slice(0, 8);
+  await seedBrowserDatabase((db) => [
+    db.prepare('INSERT INTO children (id, display_name, start_date, revision, created_at) VALUES (?, ?, ?, 1, ?)')
+      .bind(id, name, '2026-11-01', '2026-11-01T00:00:00Z'),
+  ]);
 
   await page.setViewportSize({ width: 280, height: 700 });
   await openReview(page, name);
   await expect(page.getByText('No activities were scheduled in either period.')).toBeVisible();
-  await expect(page.getByText(`Current period: ${daysAgo(today, 7)} to ${daysAgo(today, 1)}`)).toBeVisible();
-  await expect(page.getByText(`Previous period: ${daysAgo(today, 14)} to ${daysAgo(today, 8)}`)).toBeVisible();
+  await expect(page.getByText('Current period: 2026-11-02 to 2026-11-08')).toBeVisible();
+  await expect(page.getByText('Previous period: 2026-10-26 to 2026-11-01')).toBeVisible();
   const stars = page.getByRole('table', { name: 'Daily stars' });
   await expect(stars.getByRole('row')).toHaveCount(8);
-  await expect(stars.getByRole('rowheader', { name: daysAgo(today, 1) })).toBeVisible();
-  await expect(stars.getByRole('rowheader', { name: today })).toHaveCount(0);
+  await expect(stars.getByRole('rowheader', { name: '2026-11-08' })).toBeVisible();
+  await expect(stars.getByRole('rowheader', { name: '2026-11-09' })).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath('activity-review-empty.png'), fullPage: true });
 
   const period = page.getByRole('combobox', { name: 'Review period', exact: true });
   await period.focus();
   await expect(period).toBeFocused();
   await period.selectOption({ label: 'Last 4 weeks' });
-  await expect(page.getByText(`Current period: ${daysAgo(today, 28)} to ${daysAgo(today, 1)}`)).toBeVisible();
-  await expect(page.getByText(`Previous period: ${daysAgo(today, 56)} to ${daysAgo(today, 29)}`)).toBeVisible();
+  await expect(page.getByText('Current period: 2026-10-12 to 2026-11-08')).toBeVisible();
+  await expect(page.getByText('Previous period: 2026-09-14 to 2026-10-11')).toBeVisible();
   await expect(stars.getByRole('row')).toHaveCount(29);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(280);
 
   await context.setOffline(true);
   await period.selectOption({ label: 'Last 7 days' });
   await expect(page.getByRole('alert')).toContainText('Couldn’t load the activity review.');
+  await page.screenshot({ path: info.outputPath('activity-review-error.png'), fullPage: true });
   await context.setOffline(false);
-  await page.getByRole('button', { name: 'Reload review' }).click();
+  await page.getByRole('button', { name: 'Reload review' }).press('Enter');
+  await expect(period).toBeFocused();
   await expect(stars.getByRole('row')).toHaveCount(8);
 });
 
-async function seedReviewHistory(today: string) {
+async function seedReviewHistory() {
   const childId = crypto.randomUUID();
   const secondChildId = crypto.randomUUID();
-  const morning = crypto.randomUUID();
+  const morning = '0' + crypto.randomUUID().slice(1);
+  const namesake = '1' + crypto.randomUUID().slice(1);
   const evening = crypto.randomUUID();
   const bed = crypto.randomUUID();
-  const oldStart = daysAgo(today, 14);
-  const newStart = daysAgo(today, 7);
+  const firstStart = '2026-10-25';
+  const oldStart = '2026-10-26';
+  const newStart = '2026-11-02';
   const name = 'Review history ' + childId.slice(0, 8);
   const secondName = 'Shared routines ' + secondChildId.slice(0, 8);
   const morningName = 'Morning routine ' + childId.slice(0, 8);
 
-  const currentWeekdays = Array.from({ length: 7 }, (_, i) => daysAgo(today, i + 1)).filter((date) => {
-    const weekday = new Date(date + 'T00:00:00Z').getUTCDay();
-    return weekday > 0 && weekday < 6;
-  });
-  const [routineDate] = currentWeekdays;
-  const previousScoreDate = Array.from({ length: 7 }, (_, i) => daysAgo(today, i + 8)).find((date) => {
-    return [0, 1, 3, 5].includes(new Date(date + 'T00:00:00Z').getUTCDay());
-  })!;
+  const routineDate = '2026-11-06';
+  const previousScoreDate = '2026-11-01';
   const oldSchedule = [1, 3, 5, 7];
   const workweek = [1, 2, 3, 4, 5];
 
-  await seedBrowserDatabase(async (db) => {
-    const timestamp = oldStart + 'T00:00:00Z';
+  await seedBrowserDatabase((db) => {
+    const timestamp = firstStart + 'T00:00:00Z';
     const actor = 'report-test@example.test';
     const child = (id: string, label: string) =>
       db.prepare('INSERT INTO children (id, display_name, start_date, revision, created_at) VALUES (?, ?, ?, 1, ?)')
-        .bind(id, label, oldStart, timestamp);
+        .bind(id, label, firstStart, timestamp);
     const template = (id: string) =>
       db.prepare('INSERT INTO templates VALUES (?, ?)').bind(id, timestamp);
     const version = (id: string, revision: number, effective: string, label: string, activities: object[]) =>
@@ -109,38 +99,43 @@ async function seedReviewHistory(today: string) {
       db.prepare("INSERT INTO score_revisions VALUES (?, ?, ?, 1, ?, ?, '', ?, ?)")
         .bind(id, date, 'activities/' + morning + '/' + bed, points, outcome, actor, timestamp);
 
-    await db.batch([
+    return [
       child(childId, name),
       child(secondChildId, secondName),
       template(morning),
       template(evening),
+      template(namesake),
+      version(namesake, 1, firstStart, morningName, [
+        { id: crypto.randomUUID(), label: 'Make the bed', reward: 1, weekdays: [7] },
+      ]),
       version(morning, 1, oldStart, morningName, [
         { id: bed, label: 'Straighten the bed', reward: 1, weekdays: oldSchedule },
       ]),
       version(morning, 2, newStart, morningName, [
         { id: bed, label: 'Make the bed', reward: 2, weekdays: workweek },
-        { id: crypto.randomUUID(), label: 'Make the bed', reward: 1, weekdays: [7] },
       ]),
-      version(morning, 3, today, morningName, [
+      version(morning, 3, '2026-11-09', morningName, [
         { id: bed, label: 'Make the bed today', reward: 99, weekdays: [1, 2, 3, 4, 5, 6, 7] },
       ]),
       version(evening, 1, oldStart, 'Evening routine ' + childId.slice(0, 8), [
         { id: crypto.randomUUID(), label: 'Set the alarm', reward: 1, weekdays: oldSchedule },
       ]),
-      assignment(childId, 1, oldStart, [morning, evening]),
-      assignment(childId, 2, newStart, [morning]),
-      assignment(secondChildId, 1, newStart, [morning]),
-      ...currentWeekdays.slice(0, 3).map((date) => result(childId, date, 'done_correctly', 2)),
-      result(childId, currentWeekdays[3], 'needs_improvement', 0),
+      // The wider window encounters the namesake first.
+      assignment(childId, 1, firstStart, [namesake]),
+      assignment(childId, 2, oldStart, [morning, evening]),
+      assignment(childId, 3, newStart, [morning, namesake]),
+      assignment(secondChildId, 1, newStart, [morning, namesake]),
+      ...[routineDate, '2026-11-05', '2026-11-04'].map((date) => result(childId, date, 'done_correctly', 2)),
+      result(childId, '2026-11-03', 'needs_improvement', 0),
       result(childId, previousScoreDate, 'done_correctly', 1),
       result(secondChildId, routineDate, 'needs_improvement', 0),
-    ]);
+    ];
   });
   return { name, secondName, morningName, routineDate, previousScoreDate };
 }
 
 test('parent compares recorded outcomes using the assignments, schedules, and activity identities in each period', async ({ page }) => {
-  const { name, secondName, morningName } = await seedReviewHistory(householdToday());
+  const { name, secondName, morningName } = await seedReviewHistory();
   await openReview(page, name);
   const renamed = page.getByRole('article').filter({ hasText: morningName + ' · Activity 1 of 2' });
   await expect(renamed.getByRole('heading', { name: 'Make the bed', exact: true })).toBeVisible();
@@ -164,6 +159,10 @@ test('parent compares recorded outcomes using the assignments, schedules, and ac
   await expect(unassigned.getByRole('region', { name: 'Current period' }).getByText('Not scheduled')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Make the bed today' })).toHaveCount(0);
 
+  await page.getByRole('combobox', { name: 'Review period' }).selectOption({ label: 'Last 4 weeks' });
+  await expect(current.getByText('5 of 9 recorded')).toBeVisible();
+  await expect(duplicate.getByRole('region', { name: 'Current period' }).getByText('0 of 2 recorded')).toBeVisible();
+
   await openReview(page, secondName);
   const shared = page.getByRole('article').filter({ hasText: '1 of 5 recorded' });
   await expect(shared.getByRole('heading', { name: 'Make the bed', exact: true })).toBeVisible();
@@ -172,7 +171,7 @@ test('parent compares recorded outcomes using the assignments, schedules, and ac
 });
 
 test('parent sees dated routine points, corrected and voided awards, and a reset outcome', async ({ page }, info) => {
-  const { name, morningName, routineDate, previousScoreDate } = await seedReviewHistory(householdToday());
+  const { name, morningName, routineDate, previousScoreDate } = await seedReviewHistory();
   await openDay(page, name);
   await page.getByLabel('Activity date', { exact: true }).fill(routineDate);
   const routine = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Make the bed', exact: true }) });

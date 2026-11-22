@@ -19,9 +19,10 @@ export function localParent(databasePath?: string): Plugin {
         const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
         const path = incoming.url?.split('?')[0] ?? '';
         const session = path === '/api/me' && incoming.method === 'GET';
+        const review = /^\/api\/children\/[^/]+\/activity-review$/.test(path) && incoming.method === 'GET';
         const profiles = (path === '/api/children' && ['GET', 'POST'].includes(incoming.method ?? ''))
           || (/^\/api\/children\/[^/]+\/days\//.test(path) && ['GET','POST','PATCH','PUT'].includes(incoming.method ?? ''))
-          || (/^\/api\/children\/[^/]+\/activity-review$/.test(path) && incoming.method === 'GET')
+          || review
           || (path === '/api/templates' && ['GET', 'POST'].includes(incoming.method ?? ''))
           || (/^\/api\/(templates\/[^/]+|children\/[^/]+\/assignments)$/.test(path) && ['GET', 'PUT'].includes(incoming.method ?? ''))
           || (/^\/api\/children\/[^/]+$/.test(path) && incoming.method === 'PATCH');
@@ -52,7 +53,11 @@ export function localParent(databasePath?: string): Plugin {
                 persist: databasePath ? { path: join(databasePath, 'v3') } : undefined,
               });
               const proxy = await platform;
-              result = await profileRoutes(request, proxy.env.DB, parent) ?? json({ error: { code: 'NOT_FOUND' } }, 404);
+              const fixedNow = review && incoming.headers['x-daily-stars-test-clock'] === 'fixed'
+                ? Date.parse(process.env.DAILY_STARS_BROWSER_TEST_NOW ?? '')
+                : NaN;
+              const today = Number.isFinite(fixedNow) ? jakartaToday(new Date(fixedNow)) : undefined;
+              result = await profileRoutes(request, proxy.env.DB, parent, today) ?? json({ error: { code: 'NOT_FOUND' } }, 404);
             }
           }
         } catch (error) {

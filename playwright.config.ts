@@ -27,7 +27,7 @@ export default defineConfig({
     },
     {
       command: 'npm run dev -- --port 4174 --strictPort',
-      env: testServerEnv,
+      env: { ...testServerEnv, DAILY_STARS_BROWSER_TEST_NOW: '2026-11-08T17:00:00Z' },
       url: 'http://127.0.0.1:4174/',
       reuseExistingServer: false,
       timeout: 120_000,

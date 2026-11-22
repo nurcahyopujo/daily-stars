@@ -4,9 +4,9 @@
 .rule-editor {
   margin-top: 20px;
   padding: clamp(12px, 4vw, 20px);
-  border: 1px solid var(--color-border, #dce1d5);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
-  background: var(--color-surface, #fdfcf8);
+  background: var(--color-surface);
 }
 .rule-editor summary { cursor: pointer; padding-block: 8px; }
 .rule-editor label { margin-top: 12px; }
