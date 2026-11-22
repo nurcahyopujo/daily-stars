@@ -48,6 +48,8 @@ Useful individual commands:
 | `npm run preview` | Serve the existing production build locally (migrate first) |
 | `npm run test:browser` | Test auth and profile UI, uncertain/stale recovery, local D1 persistence and built API denial at phone width in Chromium and WebKit |
 
-GitHub Actions runs these checks for pull requests and pushes to main. It performs no deployment. Browser emulation does not establish installed-phone or real Access behavior. The D1 SQL-clock/atomic mutation proof, phone installation and recovery rehearsal remain gates in the specification.
+GitHub Actions runs these checks for pull requests and pushes to `main`. A passing push to `main` builds and deploys `daily-stars-staging`. Set the GitHub Actions repository variable `CLOUDFLARE_ACCOUNT_ID` and secret `CLOUDFLARE_API_TOKEN` for the staging Cloudflare account. Apply any required remote D1 migrations separately before deploying code that depends on them. See the [staging runbook](docs/staging-access.md).
+
+Browser emulation does not establish installed-phone or real Access behavior. The D1 SQL-clock/atomic mutation proof, phone installation and recovery rehearsal remain gates in the specification.
 
 Tooling follows the official [Cloudflare Vite setup](https://developers.cloudflare.com/workers/vite-plugin/get-started/), [Cloudflare Vitest integration](https://developers.cloudflare.com/workers/testing/vitest-integration/write-your-first-test/), and [Worker-first asset routing](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/) documentation.

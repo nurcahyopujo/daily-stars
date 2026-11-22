@@ -1,4 +1,4 @@
-name: Check
+name: Check and deploy
 
 on:
   pull_request:
@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'push' && 'daily-stars-staging' || github.run_id }}
+  queue: max
 
 jobs:
   milestone-checks:
@@ -30,3 +34,12 @@ jobs:
           name: browser-failure-evidence
           path: test-results/
           if-no-files-found: ignore
+      - name: Build staging Worker
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run build:staging
+      - name: Deploy staging Worker
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --no-install wrangler deploy --config dist/daily_stars_local/wrangler.json
