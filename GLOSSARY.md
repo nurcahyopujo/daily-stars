@@ -45,3 +45,6 @@ The sum of a child's latest effective point contributions for today's activity d
 
 **Pending count**:
 The number of today's scheduled activities whose effective outcome is unrecorded.
+
+**Activity review**:
+A parent's summary of one child's scheduled activity outcomes over a period, used to choose a routine to praise or practice.

@@ -1,6 +1,7 @@
 import { TemplatePicker } from './TemplatePicker';
 import { useHouseholdProfiles } from './useHouseholdProfiles';
 import { ScoreDay, Stars } from './ScoreDay';
+import { ActivityReview } from './ActivityReview';
 import { useEffect, useRef, useState } from 'react';
 import type { Child } from '../../../shared/profiles';
 import { applyChildChange, clearChildSave, retryChild, submitChild, useChildSave } from './requests';
@@ -89,7 +90,10 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
     </li>;
   }
 
-  const selected = data?.children.find(child => child.id === new URLSearchParams(location.search).get('day'));
+  const query = new URLSearchParams(location.search);
+  const reviewChild = data?.children.find(child => child.id === query.get('review'));
+  if (reviewChild && !locked) return <ActivityReview key={reviewChild.id} child={reviewChild} onSessionExpired={onSessionExpired} />;
+  const selected = data?.children.find(child => child.id === query.get('day'));
   if (selected && data && !locked) return <ScoreDay key={selected.id} child={selected} today={data.today}/>;
   return <section className="child-profiles" aria-labelledby="profiles-title" aria-busy={loading}>
     <div className="child-profiles-heading"><div><h1 id="profiles-title">Manage children</h1>

@@ -1,0 +1,62 @@
+.activity-review h1 {
+  font-size: clamp(26px, 7vw, 32px);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.activity-review a { color: var(--color-action); }
+.activity-review select {
+  display: block;
+  height: 44px;
+  margin-top: var(--space-small);
+  padding: var(--space-small);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: white;
+  color: inherit;
+  font: inherit;
+}
+.activity-review select:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.activity-review table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.activity-review caption {
+  text-align: left;
+  font-size: 18px;
+  font-weight: 650;
+}
+.activity-review th, .activity-review td {
+  padding: var(--space-small) 4px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.activity-review th:first-child { text-align: left; }
+.activity-review time { white-space: nowrap; }
+.activity-review-card {
+  margin-block: var(--space-small);
+  padding: var(--space-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  overflow-wrap: anywhere;
+}
+.activity-review-card > p { margin: 0 0 var(--space-small); }
+.activity-review-periods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-small);
+}
+.activity-review-periods h4, .activity-review-periods p { margin: 0; font-size: 14px; }
+.activity-review-periods ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+.activity-review table { margin-top: var(--space-medium); }

@@ -4,10 +4,14 @@ export function jakartaToday(now: Date): string {
   }).format(now);
 }
 
+export function shiftDate(date: string, days: number): string {
+  const shifted = new Date(`${date}T00:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+}
+
 export function nextDate(date: string): string {
-  const next = new Date(`${date}T00:00:00Z`);
-  next.setUTCDate(next.getUTCDate() + 1);
-  return next.toISOString().slice(0, 10);
+  return shiftDate(date, 1);
 }
 
 export function dayBounds(today: string): [number, number] {

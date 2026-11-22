@@ -1,5 +1,6 @@
 import { ruleRoutes } from './rules';
 import { scoring } from './scoring';
+import { getActivityReview } from './activity-review';
 import type { ChildIntent } from '../shared/profiles';
 import type { Parent } from './auth';
 import { listChildren, listTemplates, saveChild } from './child-storage';
@@ -15,11 +16,20 @@ function displayName(value: unknown): string {
   return value.trim();
 }
 
-export async function profileRoutes(request: Request, db: D1Database, parent: Parent): Promise<Response | null> {
+export async function profileRoutes(
+  request: Request, db: D1Database, parent: Parent, today = jakartaToday(new Date()),
+): Promise<Response | null> {
   const url = new URL(request.url);
-  const today = jakartaToday(new Date());
   const day = /^\/api\/children\/([^/]+)\/days\/(\d{4}-\d{2}-\d{2})(?:\/(.+))?$/.exec(url.pathname);
   if (day) return scoring(request, db, parent, today, day);
+  const review = /^\/api\/children\/([^/]+)\/activity-review$/.exec(url.pathname);
+  if (review && request.method === 'GET') {
+    const period = url.searchParams.get('days');
+    if (period !== null && period !== '7' && period !== '28') invalid('Choose seven days or four weeks.');
+    const data = await getActivityReview(db, review[1], today, period === '28' ? 28 : 7);
+    if (!data) throw new ApiError(404, 'NOT_FOUND', 'Child not found.');
+    return json(data);
+  }
   if (request.method === 'GET' && url.pathname === '/api/children') {
     return json({ today, children: await listChildren(db, today, url.searchParams.get('includeArchived') === 'true') });
   }
