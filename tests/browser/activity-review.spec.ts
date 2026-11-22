@@ -34,6 +34,8 @@ test('parent reviews completed household days and switches to four weeks', async
 
   await page.setViewportSize({ width: 280, height: 700 });
   await openReview(page, name);
+  // Reproduce the wide table text from CI on either operating system.
+  await page.addStyleTag({ content: 'table { font-family: Verdana, system-ui; letter-spacing: 1px; }' });
   await expect(page.getByText('No activities were scheduled in either period.')).toBeVisible();
   await expect(page.getByText('Current period: 2026-11-02 to 2026-11-08')).toBeVisible();
   await expect(page.getByText('Previous period: 2026-10-26 to 2026-11-01')).toBeVisible();

@@ -37,7 +37,7 @@
   font-variant-numeric: tabular-nums;
 }
 .activity-review th:first-child { text-align: left; }
-.activity-review time { white-space: nowrap; }
+.activity-review > p time { white-space: nowrap; }
 .activity-review-card {
   margin-block: var(--space-small);
   padding: var(--space-card);

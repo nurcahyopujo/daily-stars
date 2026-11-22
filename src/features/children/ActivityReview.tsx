@@ -114,10 +114,10 @@ export function ActivityReview({ child, onSessionExpired }: { child: Child; onSe
         <table>
           <caption>Daily stars</caption>
           <thead><tr>
-            <th scope="col">Activity date</th>
-            <th scope="col">Routine points</th>
-            <th scope="col">One-off points</th>
-            <th scope="col">Net stars</th>
+            <th scope="col">Date</th>
+            <th scope="col">Routine</th>
+            <th scope="col">One-off</th>
+            <th scope="col">Net</th>
           </tr></thead>
           <tbody>{data.dailyStars.map(({ date, routine, oneOff, net }) => (
             <tr key={date}>
