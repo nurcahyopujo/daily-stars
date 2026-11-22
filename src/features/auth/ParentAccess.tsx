@@ -1,4 +1,5 @@
 import { RuleSettings } from '../children/RuleSettings';
+import { clearPrizeSaves } from '../children/Prizes';
 import { clearScoreSaves } from '../children/ScoreDay';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -62,7 +63,7 @@ export function ParentAccess() {
       loadSession(signal).then((result) => {
         if (!signal.aborted) {
           if (result.status === 'signed-in') {
-            if (lastEmail.current && lastEmail.current !== result.parent.email) { clearChildSave(); clearScoreSaves(); clearRuleSave(); }
+            if (lastEmail.current && lastEmail.current !== result.parent.email) { clearChildSave(); clearScoreSaves(); clearPrizeSaves(); clearRuleSave(); }
             resumeChildSave();
             resumeRuleSave();
             lastEmail.current = result.parent.email;
@@ -92,7 +93,7 @@ export function ParentAccess() {
   }, [attempt]);
 
   const signOut = () => {
-    clearScoreSaves();
+    clearScoreSaves(); clearPrizeSaves();
     clearChildSave();
     clearRuleSave();
     flushSync(() => setSession({ status: 'loading' }));

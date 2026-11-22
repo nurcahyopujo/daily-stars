@@ -15,6 +15,7 @@ await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
 
 beforeEach(async () => {
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM redemptions'),
     env.DB.prepare('DELETE FROM score_revisions'),
     env.DB.prepare('DELETE FROM mutation_receipts'),
     env.DB.prepare('DELETE FROM mutation_assertions'),

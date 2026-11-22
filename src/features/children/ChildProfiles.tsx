@@ -1,3 +1,4 @@
+import { Prizes } from './Prizes';
 import { TemplatePicker } from './TemplatePicker';
 import { useHouseholdProfiles } from './useHouseholdProfiles';
 import { ScoreDay, Stars } from './ScoreDay';
@@ -79,18 +80,21 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
   tomorrow?.setUTCDate(tomorrow.getUTCDate() + 1);
   const archiveDate = tomorrow?.toISOString().slice(0, 10);
 
-  function childRow(child: Child & { total?: number }) {
+  function childRow(child: Child & { total?: number; balance?: number }) {
     const isArchived = Boolean(child.archiveEffectiveDate && data && child.archiveEffectiveDate <= data.today);
     return <li className="child-profiles-card" key={child.id}>
-      <div><h2>{child.displayName}</h2>{child.total !== undefined && <p><Stars value={child.total}/> total</p>}<p>Started {child.startDate}</p>
+      <div><h2>{child.displayName}</h2>{child.total !== undefined && <p><Stars value={child.balance ?? child.total}/> balance</p>}<p>Started {child.startDate}</p>
         {child.archiveEffectiveDate && <p>{isArchived ? 'Archived from' : 'Archives on'} {child.archiveEffectiveDate} · History preserved</p>}
       </div>
       <a href={'/children?day='+encodeURIComponent(child.id)}>{isArchived ? 'Open last day' : 'Open today'}</a>
+      <a href={'/children?prizes='+encodeURIComponent(child.id)}>Prizes</a>
       <button type="button" disabled={locked || loading} onClick={(event) => open(child, event.currentTarget)} aria-label={`Manage ${child.displayName}`}>Manage</button>
     </li>;
   }
 
   const query = new URLSearchParams(location.search);
+  const prizeChild = data?.children.find(child => child.id === query.get('prizes'));
+  if (prizeChild && !locked) return <Prizes key={prizeChild.id} child={prizeChild}/>;
   const reviewChild = data?.children.find(child => child.id === query.get('review'));
   if (reviewChild && !locked) return <ActivityReview key={reviewChild.id} child={reviewChild} onSessionExpired={onSessionExpired} />;
   const selected = data?.children.find(child => child.id === query.get('day'));

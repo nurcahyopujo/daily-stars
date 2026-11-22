@@ -1,4 +1,5 @@
 import { ruleRoutes } from './rules';
+import { prizes } from './prizes';
 import { scoring } from './scoring';
 import { getActivityReview } from './activity-review';
 import type { ChildIntent } from '../shared/profiles';
@@ -20,6 +21,8 @@ export async function profileRoutes(
   request: Request, db: D1Database, parent: Parent, today = jakartaToday(new Date()),
 ): Promise<Response | null> {
   const url = new URL(request.url);
+  const prize = /^\/api\/children\/([^/]+)\/prizes(?:\/([\w-]{16,128}))?$/.exec(url.pathname);
+  if (prize) return prizes(request, db, parent, today, prize);
   const day = /^\/api\/children\/([^/]+)\/days\/(\d{4}-\d{2}-\d{2})(?:\/(.+))?$/.exec(url.pathname);
   if (day) return scoring(request, db, parent, today, day);
   const review = /^\/api\/children\/([^/]+)\/activity-review$/.exec(url.pathname);

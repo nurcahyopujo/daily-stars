@@ -122,6 +122,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
     <section className="child-profiles score-day">
       {!pending && <a href="/children">← Manage children</a>}
       <h1>{child.displayName}</h1>
+      {!pending && <a href={'/children?prizes=' + encodeURIComponent(child.id)}>Prizes</a>}
       {!pending && !draft && !conflict && (
         <a href={'/children?' + new URLSearchParams({ review: child.id, date })}>Activity review</a>
       )}
@@ -222,7 +223,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
               <Stars signed value={data.net} /> {date === today ? 'today' : 'on this date'}
             </span>
             <span>
-              <Stars value={data.total} /> total
+              <Stars value={data.balance ?? data.total} /> balance
             </span>
           </p>
           <fieldset disabled={!!pending || !!draft || !!conflict}>

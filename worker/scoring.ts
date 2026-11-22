@@ -38,9 +38,9 @@ export async function scoring(
       .bind(child, date),
     db
       .prepare(
-        'SELECT coalesce(sum(points),0) total,coalesce(sum(CASE WHEN day=? THEN points END),0) net FROM effective_scores WHERE child_id=?',
+        'SELECT total,balance,(SELECT coalesce(sum(points),0) FROM effective_scores WHERE day=? AND child_id=?) net FROM child_balances WHERE child_id=?',
       )
-      .bind(date, child),
+      .bind(date, child, child),
   ]);
   const activities = readScheduledTemplates(templates.results).flatMap(scheduledActivities);
   const history = revisions.results as unknown as Score[];

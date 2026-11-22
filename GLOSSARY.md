@@ -32,13 +32,19 @@ An activity's recorded result: done correctly, needs improvement, or unrecorded.
 An independent award or deduction for a child and activity date, with a required reason.
 
 **Void**:
-A final removal of a one-off entry's contribution while preserving its history.
+A final reversal of a one-off entry or redemption while preserving its history. Voiding a redemption returns its cost to the child's balance.
 
 **Running total**:
 The sum of a child's latest effective point contributions across all activity dates.
 
 **Star**:
 One point in a child’s score. Awards add stars and deductions subtract them.
+
+**Balance**:
+A child's running total minus the cost of redemptions still in effect. Later score corrections can bring the balance below zero.
+
+**Redemption**:
+A parent's record of a child spending stars on a prize. The parent names the prize and sets its cost when redeeming it.
 
 **Today's net**:
 The sum of a child's latest effective point contributions for today's activity date.

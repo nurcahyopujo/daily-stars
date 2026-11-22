@@ -14,7 +14,7 @@ export type Score = {
   actor: string;
   recorded: string;
 };
-export type Day = { today: string; activities: Activity[]; history: Score[]; net: number; total: number };
+export type Day = { today: string; activities: Activity[]; history: Score[]; net: number; balance?: number; total: number };
 
 export type ScheduledTemplate = {
   date: string;
