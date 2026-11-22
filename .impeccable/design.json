@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-18T11:56:57.008Z",
+  "title": "Design System: Daily Stars",
+  "extensions": {
+    "colorMeta": {
+      "forest-green": {
+        "role": "primary",
+        "displayName": "Forest Green",
+        "canonical": "#365842",
+        "tonalRamp": [
+          "oklch(15% 0.07 150)",
+          "oklch(27% 0.07 150)",
+          "oklch(39% 0.07 150)",
+          "oklch(51% 0.07 150)",
+          "oklch(63% 0.07 150)",
+          "oklch(75% 0.07 150)",
+          "oklch(85% 0.07 150)",
+          "oklch(95% 0.07 150)"
+        ]
+      },
+      "warm-paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#f7f5ef",
+        "tonalRamp": [
+          "oklch(15% 0.015 90)",
+          "oklch(27% 0.015 90)",
+          "oklch(39% 0.015 90)",
+          "oklch(51% 0.015 90)",
+          "oklch(63% 0.015 90)",
+          "oklch(75% 0.015 90)",
+          "oklch(85% 0.015 90)",
+          "oklch(95% 0.015 90)"
+        ]
+      },
+      "cream-surface": {
+        "role": "neutral",
+        "displayName": "Cream Surface",
+        "canonical": "#fdfcf8",
+        "tonalRamp": [
+          "oklch(15% 0.01 90)",
+          "oklch(27% 0.01 90)",
+          "oklch(39% 0.01 90)",
+          "oklch(51% 0.01 90)",
+          "oklch(63% 0.01 90)",
+          "oklch(75% 0.01 90)",
+          "oklch(85% 0.01 90)",
+          "oklch(95% 0.01 90)"
+        ]
+      },
+      "deep-ink": {
+        "role": "neutral",
+        "displayName": "Deep Ink",
+        "canonical": "#293d35",
+        "tonalRamp": [
+          "oklch(15% 0.045 155)",
+          "oklch(27% 0.045 155)",
+          "oklch(39% 0.045 155)",
+          "oklch(51% 0.045 155)",
+          "oklch(63% 0.045 155)",
+          "oklch(75% 0.045 155)",
+          "oklch(85% 0.045 155)",
+          "oklch(95% 0.045 155)"
+        ]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#59665e",
+        "tonalRamp": [
+          "oklch(15% 0.025 150)",
+          "oklch(27% 0.025 150)",
+          "oklch(39% 0.025 150)",
+          "oklch(51% 0.025 150)",
+          "oklch(63% 0.025 150)",
+          "oklch(75% 0.025 150)",
+          "oklch(85% 0.025 150)",
+          "oklch(95% 0.025 150)"
+        ]
+      },
+      "muted-gold": {
+        "role": "secondary",
+        "displayName": "Muted Gold",
+        "canonical": "#8a681f",
+        "tonalRamp": [
+          "oklch(15% 0.09 80)",
+          "oklch(27% 0.09 80)",
+          "oklch(39% 0.09 80)",
+          "oklch(51% 0.09 80)",
+          "oklch(63% 0.09 80)",
+          "oklch(75% 0.09 80)",
+          "oklch(85% 0.09 80)",
+          "oklch(95% 0.09 80)"
+        ]
+      },
+      "soft-border": {
+        "role": "neutral",
+        "displayName": "Soft Border",
+        "canonical": "#dce1d5",
+        "tonalRamp": [
+          "oklch(15% 0.025 110)",
+          "oklch(27% 0.025 110)",
+          "oklch(39% 0.025 110)",
+          "oklch(51% 0.025 110)",
+          "oklch(63% 0.025 110)",
+          "oklch(75% 0.025 110)",
+          "oklch(85% 0.025 110)",
+          "oklch(95% 0.025 110)"
+        ]
+      },
+      "field-border": {
+        "role": "neutral",
+        "displayName": "Field Border",
+        "canonical": "#778b79",
+        "tonalRamp": [
+          "oklch(15% 0.035 145)",
+          "oklch(27% 0.035 145)",
+          "oklch(39% 0.035 145)",
+          "oklch(51% 0.035 145)",
+          "oklch(63% 0.035 145)",
+          "oklch(75% 0.035 145)",
+          "oklch(85% 0.035 145)",
+          "oklch(95% 0.035 145)"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#fff",
+        "tonalRamp": [
+          "oklch(15% 0 90)",
+          "oklch(27% 0 90)",
+          "oklch(39% 0 90)",
+          "oklch(51% 0 90)",
+          "oklch(63% 0 90)",
+          "oklch(75% 0 90)",
+          "oklch(85% 0 90)",
+          "oklch(95% 0 90)"
+        ]
+      },
+      "soft-green": {
+        "role": "primary",
+        "displayName": "Soft Green",
+        "canonical": "#e6eddc",
+        "tonalRamp": [
+          "oklch(15% 0.04 125)",
+          "oklch(27% 0.04 125)",
+          "oklch(39% 0.04 125)",
+          "oklch(51% 0.04 125)",
+          "oklch(63% 0.04 125)",
+          "oklch(75% 0.04 125)",
+          "oklch(85% 0.04 125)",
+          "oklch(95% 0.04 125)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Welcome heading."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section and state headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Child names and dialog headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Main prose and form values."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, dates, helper text, and form labels."
+      },
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "Management-screen headings."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Small date and count text."
+      }
+    },
+    "shadows": [
+      {
+        "name": "open-menu",
+        "value": "0 8px 24px rgb(25 44 34 / 12%)",
+        "purpose": "Separate the open navigation menu from the page."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main form and profile actions.",
+      "html": "<button class=\"ds-button\">Save changes</button>",
+      "css": ".ds-button { min-height: 44px; padding: 9px 14px; border: 1px solid var(--color-action, #365842); border-radius: var(--radius-control, 12px); background: var(--color-action, #365842); color: #fff; font: 650 14px/1.6 ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-button:focus-visible { outline: 3px solid var(--color-focus, #8a681f); outline-offset: 3px; } .ds-button:disabled { opacity: .5; cursor: default; } .ds-button:not(:disabled):hover { filter: brightness(.92); }"
+    },
+    {
+      "name": "Menu Toggle",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Opens the parent navigation menu.",
+      "html": "<button class=\"ds-menu-toggle\" aria-label=\"Main menu\" aria-expanded=\"false\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M3 6h18M3 12h18M3 18h18\"/></svg></button>",
+      "css": ".ds-menu-toggle { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--color-action, #365842); border-radius: var(--radius-control, 12px); background: transparent; color: var(--color-action, #365842); cursor: pointer; } .ds-menu-toggle:focus-visible { outline: 3px solid var(--color-focus, #8a681f); outline-offset: 3px; }"
+    },
+    {
+      "name": "Navigation Menu",
+      "kind": "nav",
+      "description": "Compact menu with a selected destination.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main menu\"><a href=\"#home\" aria-current=\"page\">Home</a><a href=\"#children\">Manage children</a><a href=\"#profile\">Profile</a></nav>",
+      "css": ".ds-nav { display: grid; gap: 4px; width: 240px; padding: 8px; border: 1px solid #dce1d5; border-radius: var(--radius-control, 12px); background: #fdfcf8; box-shadow: 0 8px 24px rgb(25 44 34 / 12%); } .ds-nav a { display: block; min-height: 44px; padding: 10px 18px; border-radius: var(--radius-control, 12px); color: var(--color-action, #365842); font: 14px/1.6 ui-sans-serif, system-ui, sans-serif; text-decoration: none; } .ds-nav a[aria-current=\"page\"] { background: var(--color-action, #365842); color: #fff; } .ds-nav a:focus-visible { outline: 3px solid var(--color-focus, #8a681f); outline-offset: 3px; }"
+    },
+    {
+      "name": "Management Panel",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Cream task panel containing child rows.",
+      "html": "<section class=\"ds-panel\"><h2>Manage children</h2><div class=\"ds-panel-row\"><div><h3>Sunny</h3><p>Started 2026-11-18</p></div><button>Manage</button></div></section>",
+      "css": ".ds-panel { padding: 20px; border: 1px solid #dce1d5; border-radius: 22px; background: #fdfcf8; color: #293d35; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-panel h2 { margin: 10px 0; font-size: 18px; } .ds-panel-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 16px 0; border-bottom: 1px solid #dce1d5; } .ds-panel-row h3 { margin: 0 0 8px; font-size: 16px; overflow-wrap: anywhere; } .ds-panel-row p { margin: 0; color: #59665e; font-size: 14px; } .ds-panel-row button { min-height: 44px; padding: 9px 14px; border: 1px solid var(--color-action, #365842); border-radius: var(--radius-control, 12px); background: var(--color-action, #365842); color: #fff; cursor: pointer; } .ds-panel-row button:focus-visible { outline: 3px solid var(--color-focus, #8a681f); outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field-text",
+      "description": "Nickname field used in child editing.",
+      "html": "<label class=\"ds-field\">Nickname<input type=\"text\" value=\"Sunny\" /></label>",
+      "css": ".ds-field { display: block; color: #293d35; font: 600 16px/1.6 ui-sans-serif, system-ui, sans-serif; } .ds-field input { display: block; width: 100%; min-height: 44px; margin-top: 8px; padding: 10px; border: 1px solid #778b79; border-radius: var(--radius-control, 12px); background: #fff; color: #293d35; font: 400 16px/1.6 ui-sans-serif, system-ui, sans-serif; } .ds-field input:focus-visible { outline: 3px solid var(--color-focus, #8a681f); outline-offset: 3px; }"
+    },
+    {
+      "name": "Status Tabs",
+      "kind": "custom",
+      "description": "Switches between active and archived children.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\" aria-label=\"Child status\"><button role=\"tab\" aria-selected=\"true\">Active <strong>2</strong></button><button role=\"tab\" aria-selected=\"false\">Archived <strong>1</strong></button></div>",
+      "css": ".ds-tabs { display: flex; flex-wrap: wrap; gap: 8px; } .ds-tabs button { min-height: 44px; padding: 9px 14px; border: 1px solid var(--color-action, #365842); border-radius: var(--radius-control, 12px); background: transparent; color: var(--color-action, #365842); font: 14px/1.6 ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-tabs button[aria-selected=\"true\"] { background: var(--color-action, #365842); color: #fff; } .ds-tabs button:not(:disabled):hover { filter: brightness(.92); background: var(--color-action-soft, #e6eddc); } .ds-tabs button[aria-selected=\"true\"]:hover { background: var(--color-action, #365842); } .ds-tabs strong { display: inline-block; min-width: 24px; margin-left: 8px; padding: 0 6px; border-radius: var(--radius-control, 12px); background: var(--color-action-soft, #e6eddc); color: var(--color-action, #365842); font-size: 12px; text-align: center; } .ds-tabs button[aria-selected=\"true\"] strong { background: rgb(255 255 255 / 18%); color: #fff; } .ds-tabs button:focus-visible { outline: 3px solid var(--color-focus, #8a681f); outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Family Notebook",
+    "overview": "Daily Stars feels calm, warm, practical, and lightly playful. Its narrow reading column, paper-toned surfaces, forest-green actions, and small star mark suggest a household record that parents can return to every day. The interface stays approachable and dependable when it presents forms, dates, and saved state.\n\nThe system is softly layered through a warm page background, lighter panels, quiet borders, and a lifted open menu. The gold accent adds a small moment of warmth without competing with actions.",
+    "keyCharacteristics": [
+      "A compact phone-first column with generous space around the welcome message.",
+      "Warm paper and cream surfaces with forest-green actions.",
+      "Rounded panels and controls, with visible keyboard focus."
+    ],
+    "rules": [
+      {
+        "name": "The One Action Color Rule",
+        "body": "Use Forest Green for actionable and selected states; keep Muted Gold for focus and small accents.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "**Do** keep actions and selected states consistently green.",
+      "**Do** use the light surface and quiet border for task panels, with visible focus on every control.",
+      "**Do** allow long child names and form content to wrap inside the phone column."
+    ],
+    "donts": [
+      "**Don't** use the gold accent as a second primary action color.",
+      "**Don't** add resting shadows to every card; use tonal layers and borders first.",
+      "**Don't** replace the system type stack or current corner language when extending the incumbent interface."
+    ]
+  }
+}

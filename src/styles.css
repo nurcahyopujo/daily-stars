@@ -1,5 +1,6 @@
 :root {
   --color-action: #365842;
+  --color-action-soft: #e6eddc;
   --color-focus: #8a681f;
   --space-small: 8px;
   --space-medium: 20px;
@@ -18,7 +19,7 @@ body { margin: 0; min-width: 280px; }
 #root { display: flex; flex-direction: column; min-height: 100dvh; }
 main { flex: 1; width: 100%; max-width: 660px; margin: 0 auto; padding: 28px 24px; }
 .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 750; letter-spacing: -0.4px; }
-.star { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: #e6eddc; font-size: 25px; }
+.star { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: var(--color-action-soft); font-size: 25px; }
 .welcome { padding-top: clamp(40px, 10vw, 72px); }
 .eyebrow { color: #52644f; font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: 1.6px; }
 h1 { font-size: clamp(42px, 11vw, 58px); line-height: 1.12; letter-spacing: -2px; font-weight: 650; margin: 18px 0 24px; }

@@ -1,9 +1,10 @@
+import { ScoreDay, Stars } from './ScoreDay';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Child, TemplateSummary } from '../../../shared/profiles';
 import { applyChildChange, clearChildSave, requestJson, RequestError, retryChild, submitChild, useChildSave } from './requests';
 import './child-profiles.css';
 
-type Profiles = { today: string; children: Child[] };
+type Profiles = { today: string; children: (Child & {total?: number})[] };
 type Editor = { child: Child | null; name: string; templates: string[]; archive: boolean };
 
 export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => void }) {
@@ -113,24 +114,28 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
   tomorrow?.setUTCDate(tomorrow.getUTCDate() + 1);
   const archiveDate = tomorrow?.toISOString().slice(0, 10);
 
-  function childRow(child: Child) {
+  function childRow(child: Profiles['children'][number]) {
     const isArchived = Boolean(child.archiveEffectiveDate && data && child.archiveEffectiveDate <= data.today);
     return <li className="child-profiles-card" key={child.id}>
-      <div><h3>{child.displayName}</h3><p>Started {child.startDate}</p>
+      <div><h2>{child.displayName}</h2>{child.total !== undefined && <p><Stars value={child.total}/> total</p>}<p>Started {child.startDate}</p>
         {child.archiveEffectiveDate && <p>{isArchived ? 'Archived from' : 'Archives on'} {child.archiveEffectiveDate} · History preserved</p>}
       </div>
+      <a href={'/children?day='+encodeURIComponent(child.id)}>{isArchived ? 'Open last day' : 'Open today'}</a>
       <button type="button" disabled={locked || loading} onClick={(event) => open(child, event.currentTarget)} aria-label={`Manage ${child.displayName}`}>Manage</button>
     </li>;
   }
 
+  const selected = data?.children.find(child => child.id === new URLSearchParams(location.search).get('day'));
+  if (selected && data && !locked) return <ScoreDay key={selected.id} child={selected} today={data.today}/>;
   return <section className="child-profiles" aria-labelledby="profiles-title" aria-busy={loading}>
-    <div className="child-profiles-heading"><h2 id="profiles-title">Manage children</h2>
+    <div className="child-profiles-heading"><div><h1 id="profiles-title">Manage children</h1>
+      <p>Keep your children’s profiles and history in one place.</p></div>
       <button ref={addButton} type="button" disabled={locked || loading} onClick={(event) => open(null, event.currentTarget)}>Add child</button>
     </div>
     {loading && <p role="status">Loading child profiles…</p>}
     {error && <div role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>Reload profiles</button></div>}
     {data && <>
-      <p className="child-profiles-date">{data.today} · Jakarta</p>
+      <p className="child-profiles-date">As of {data.today} · Jakarta</p>
       <div className="child-profiles-tabs" role="tablist" aria-label="Child status" onKeyDown={(event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
@@ -140,17 +145,18 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
       }}>
         {(['active', 'archived'] as const).map((status) => <button key={status} type="button"
           role="tab" id={`children-${status}-tab`} aria-controls={`children-${status}-panel`}
-          aria-selected={tab === status} tabIndex={tab === status ? 0 : -1} disabled={locked}
+          aria-selected={tab === status} aria-label={`${status === 'active' ? 'Active' : 'Archived'} (${status === 'active' ? active.length : archived.length})`}
+          tabIndex={tab === status ? 0 : -1} disabled={locked}
           onClick={() => setTab(status)}>
-          {status === 'active' ? `Active (${active.length})` : `Archived (${archived.length})`}
+          <span>{status === 'active' ? 'Active' : 'Archived'}</span><strong>{status === 'active' ? active.length : archived.length}</strong>
         </button>)}
       </div>
       <div role="tabpanel" id="children-active-panel" aria-labelledby="children-active-tab" hidden={tab !== 'active'} tabIndex={0}>
-        {!active.length && <p>No active children. Add a child to get started.</p>}
+        {!active.length && <p className="child-profiles-empty">No active children. Add a child to get started.</p>}
         <ul className="child-profiles-list" aria-label="Active children">{active.map(childRow)}</ul>
       </div>
       <div role="tabpanel" id="children-archived-panel" aria-labelledby="children-archived-tab" hidden={tab !== 'archived'} tabIndex={0}>
-        {!archived.length && <p>No archived children.</p>}
+        {!archived.length && <p className="child-profiles-empty">No archived children.</p>}
         <ul className="child-profiles-list" aria-label="Archived children">{archived.map(childRow)}</ul>
       </div>
     </>}

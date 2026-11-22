@@ -1,3 +1,4 @@
+import { clearScoreSaves } from '../children/ScoreDay';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { loadSession, type SessionState } from './session';
@@ -55,7 +56,7 @@ export function ParentAccess() {
       loadSession(signal).then((result) => {
         if (!signal.aborted) {
           if (result.status === 'signed-in') {
-            if (lastEmail.current && lastEmail.current !== result.parent.email) clearChildSave();
+            if (lastEmail.current && lastEmail.current !== result.parent.email) { clearChildSave(); clearScoreSaves(); }
             resumeChildSave();
             lastEmail.current = result.parent.email;
           }
@@ -84,6 +85,7 @@ export function ParentAccess() {
   }, [attempt]);
 
   const signOut = () => {
+    clearScoreSaves();
     clearChildSave();
     flushSync(() => setSession({ status: 'loading' }));
     window.location.assign('/cdn-cgi/access/logout');

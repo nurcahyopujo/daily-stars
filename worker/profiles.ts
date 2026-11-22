@@ -1,3 +1,4 @@
+import { scoring } from './scoring';
 import type { ChildIntent } from '../shared/profiles';
 import type { Parent } from './auth';
 import { listChildren, listTemplates, saveChild } from './child-storage';
@@ -16,6 +17,8 @@ function displayName(value: unknown): string {
 export async function profileRoutes(request: Request, db: D1Database, parent: Parent): Promise<Response | null> {
   const url = new URL(request.url);
   const today = jakartaToday(new Date());
+  const day = /^\/api\/children\/([^/]+)\/days\/(\d{4}-\d{2}-\d{2})(?:\/(.+))?$/.exec(url.pathname);
+  if (day) return scoring(request, db, parent, today, day);
   if (request.method === 'GET' && url.pathname === '/api/children') {
     return json({ today, children: await listChildren(db, today, url.searchParams.get('includeArchived') === 'true') });
   }

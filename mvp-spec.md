@@ -71,6 +71,8 @@ A template contains a name and an ordered list of activity definitions. Each act
 - Return the saved revision and refresh the day and dashboard from the server. Use the same action key when retrying an uncertain save. If another parent already changed the row, show the new outcome and let the parent choose again.
 - **Accept when** each activity has one effective outcome, a retry produces one score, and changing `+5` to `−2` changes the day by `−7` while retaining both revisions.
 
+**Star display.** One star represents one point. On a recorded award of 1–5 points, show one star per point and the signed amount. For larger awards, deductions and totals, show one star with the exact amount. Label deductions and recorded zero-point outcomes explicitly. Unrecorded activities remain pending today. The child day shows the selected date’s net beside the current running total. In Manage children, each profile shows its running total with separate actions to open the day or manage the profile.
+
 ### F5. One-off awards and deductions
 
 - On the child’s day screen, choose **Add points** or **Deduct points**, enter a positive magnitude and a required reason, and confirm an explicit child, activity date, and signed amount summary. Suggested reason limit is 160 trimmed characters.

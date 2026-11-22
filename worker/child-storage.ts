@@ -7,7 +7,7 @@ const childColumns = `id, display_name AS displayName, start_date AS startDate,
   archive_effective_date AS archiveEffectiveDate, revision`;
 
 export async function listChildren(db: D1Database, today: string, includeArchived: boolean) {
-  const rows = await db.prepare(`SELECT ${childColumns} FROM children
+  const rows = await db.prepare(`SELECT ${childColumns}, (SELECT coalesce(sum(points),0) FROM effective_scores WHERE child_id=children.id) AS total FROM children
     WHERE ? = 1 OR archive_effective_date IS NULL OR archive_effective_date > ?
     ORDER BY created_at, id`).bind(Number(includeArchived), today).all<Child>();
   return rows.results;

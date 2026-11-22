@@ -19,6 +19,7 @@ export function localParent(): Plugin {
         const path = incoming.url?.split('?')[0] ?? '';
         const session = path === '/api/me' && incoming.method === 'GET';
         const profiles = (path === '/api/children' && ['GET', 'POST'].includes(incoming.method ?? ''))
+          || (/^\/api\/children\/[^/]+\/days\//.test(path) && ['GET','POST','PATCH','PUT'].includes(incoming.method ?? ''))
           || (path === '/api/templates' && incoming.method === 'GET')
           || (/^\/api\/children\/[^/]+$/.test(path) && incoming.method === 'PATCH');
         if (!loopback || !localHost || (!session && !profiles)) { next(); return; }

@@ -37,6 +37,9 @@ A final removal of a one-off entry's contribution while preserving its history.
 **Running total**:
 The sum of a child's latest effective point contributions across all activity dates.
 
+**Star**:
+One point in a child’s score. Awards add stars and deductions subtract them.
+
 **Today's net**:
 The sum of a child's latest effective point contributions for today's activity date.
 
