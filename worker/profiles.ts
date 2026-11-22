@@ -1,5 +1,6 @@
 import { ruleRoutes } from './rules';
 import { scoring } from './scoring';
+import { getActivityReview } from './activity-review';
 import type { ChildIntent } from '../shared/profiles';
 import type { Parent } from './auth';
 import { listChildren, listTemplates, saveChild } from './child-storage';
@@ -20,6 +21,10 @@ export async function profileRoutes(request: Request, db: D1Database, parent: Pa
   const today = jakartaToday(new Date());
   const day = /^\/api\/children\/([^/]+)\/days\/(\d{4}-\d{2}-\d{2})(?:\/(.+))?$/.exec(url.pathname);
   if (day) return scoring(request, db, parent, today, day);
+  const review = /^\/api\/children\/([^/]+)\/activity-review$/.exec(url.pathname);
+  if (review && request.method === 'GET') {
+    return json(await getActivityReview(db, review[1], today, url.searchParams.get('days')));
+  }
   if (request.method === 'GET' && url.pathname === '/api/children') {
     return json({ today, children: await listChildren(db, today, url.searchParams.get('includeArchived') === 'true') });
   }

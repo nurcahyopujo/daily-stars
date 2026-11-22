@@ -21,6 +21,7 @@ export function localParent(databasePath?: string): Plugin {
         const session = path === '/api/me' && incoming.method === 'GET';
         const profiles = (path === '/api/children' && ['GET', 'POST'].includes(incoming.method ?? ''))
           || (/^\/api\/children\/[^/]+\/days\//.test(path) && ['GET','POST','PATCH','PUT'].includes(incoming.method ?? ''))
+          || (/^\/api\/children\/[^/]+\/activity-review$/.test(path) && incoming.method === 'GET')
           || (path === '/api/templates' && ['GET', 'POST'].includes(incoming.method ?? ''))
           || (/^\/api\/(templates\/[^/]+|children\/[^/]+\/assignments)$/.test(path) && ['GET', 'PUT'].includes(incoming.method ?? ''))
           || (/^\/api\/children\/[^/]+$/.test(path) && incoming.method === 'PATCH');

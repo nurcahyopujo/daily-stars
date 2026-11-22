@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const testDatabasePath = '.wrangler/browser-tests';
+import { browserDatabasePath as testDatabasePath } from './tests/browser/database';
 const testServerEnv = { DAILY_STARS_D1_PATH: testDatabasePath };
 
 export default defineConfig({

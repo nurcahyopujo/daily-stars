@@ -1,4 +1,5 @@
-import type { Activity, Score } from '../shared/scoring';
+import { scheduledActivities, type Score } from '../shared/scoring';
+import { assignedTemplates, readScheduledTemplates } from './schedule-storage';
 import type { Parent } from './auth';
 import { ApiError, json } from './http';
 
@@ -28,17 +29,8 @@ export async function scoring(
     (profile.archive_effective_date && date >= profile.archive_effective_date)
   )
     invalid('Choose a date when this child was active.');
-  const routines = db
-    .prepare(
-      `SELECT v.template_id,v.name,v.activities_json FROM json_each((
-    SELECT template_ids_json FROM assignment_versions WHERE child_id=? AND effective_date<=?
-    ORDER BY effective_date DESC,revision DESC LIMIT 1)) a JOIN template_versions v ON v.template_id=a.value
-    WHERE v.retired=0 AND v.revision=(SELECT revision FROM template_versions WHERE template_id=a.value
-    AND effective_date<=? ORDER BY effective_date DESC,revision DESC LIMIT 1) ORDER BY a.key`,
-    )
-    .bind(child, date, date);
   const [templates, revisions, sums] = await db.batch<Record<string, unknown>>([
-    routines,
+    assignedTemplates(db, child, date, date),
     db
       .prepare(
         'SELECT stream,revision,points,outcome,reason,actor,recorded FROM score_revisions WHERE child_id=? AND day=? ORDER BY recorded DESC,revision DESC',
@@ -50,16 +42,7 @@ export async function scoring(
       )
       .bind(date, child),
   ]);
-  const activities: Activity[] = templates.results.flatMap((row) =>
-    (JSON.parse(String(row.activities_json)) as Activity[])
-      .filter((a) => !a.weekdays || a.weekdays.includes(instant.getUTCDay() || 7))
-      .map((a) => ({
-        ...a,
-        template: String(row.name),
-        templateId: String(row.template_id),
-        stream: 'activities/' + row.template_id + '/' + a.id,
-      })),
-  );
+  const activities = readScheduledTemplates(templates.results).flatMap(scheduledActivities);
   const history = revisions.results as unknown as Score[];
   if (!suffix && request.method === 'GET') return json({ today, activities, history, ...sums.results[0] });
   const activity = activities.find((a) => a.stream === suffix);

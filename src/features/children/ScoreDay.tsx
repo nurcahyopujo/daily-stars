@@ -122,6 +122,9 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
     <section className="child-profiles score-day">
       {!pending && <a href="/children">← Manage children</a>}
       <h1>{child.displayName}</h1>
+      {!pending && !draft && !conflict && (
+        <a href={'/children?' + new URLSearchParams({ review: child.id, date })}>Activity review</a>
+      )}
       <label>
         Activity date{' '}
         <input
