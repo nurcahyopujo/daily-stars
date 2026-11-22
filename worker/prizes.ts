@@ -1,5 +1,5 @@
-import type { Parent } from './auth';
-import { ApiError, json } from './http';
+import type { Parent } from './auth.ts';
+import { ApiError, json } from './http.ts';
 
 export async function prizes(request: Request, db: D1Database, parent: Parent, today: string, match: RegExpMatchArray) {
   const [, child, id] = match;

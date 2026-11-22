@@ -1,5 +1,5 @@
-import type { DateRange, ReviewScore } from '../shared/activity-review';
-import { assignedTemplates, readScheduledTemplates } from './schedule-storage';
+import type { DateRange, ReviewScore } from '../shared/activity-review.ts';
+import { assignedTemplates, readScheduledTemplates } from './schedule-storage.ts';
 
 export async function readActivityReview(db: D1Database, childId: string, current: DateRange, previous: DateRange) {
   const [child, templates, scores] = await db.batch([

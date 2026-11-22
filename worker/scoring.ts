@@ -1,7 +1,7 @@
-import { scheduledActivities, type Score } from '../shared/scoring';
-import { assignedTemplates, readScheduledTemplates } from './schedule-storage';
-import type { Parent } from './auth';
-import { ApiError, json } from './http';
+import { scheduledActivities, type Score } from '../shared/scoring.ts';
+import { assignedTemplates, readScheduledTemplates } from './schedule-storage.ts';
+import type { Parent } from './auth.ts';
+import { ApiError, json } from './http.ts';
 
 function invalid(message: string): never {
   throw new ApiError(422, 'INVALID_INPUT', message);

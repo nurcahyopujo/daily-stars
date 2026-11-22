@@ -1,4 +1,4 @@
-import { scheduledActivities, type ScheduledTemplate, type Score } from './scoring';
+import { scheduledActivities, type ScheduledTemplate, type Score } from './scoring.ts';
 
 export type DateRange = { start: string; end: string };
 

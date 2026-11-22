@@ -1,4 +1,4 @@
-import type { RoutineActivity } from './profiles';
+import type { RoutineActivity } from './profiles.ts';
 
 export type Activity = RoutineActivity & {
   template: string;

@@ -1,4 +1,4 @@
-import type { ScheduledTemplate } from '../shared/scoring';
+import type { ScheduledTemplate } from '../shared/scoring.ts';
 
 export function assignedTemplates(db: D1Database, childId: string, start: string, end: string) {
   return db.prepare(`

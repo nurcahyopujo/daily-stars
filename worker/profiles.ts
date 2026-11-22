@@ -1,12 +1,12 @@
-import { ruleRoutes } from './rules';
-import { prizes } from './prizes';
-import { scoring } from './scoring';
-import { getActivityReview } from './activity-review';
-import type { ChildIntent } from '../shared/profiles';
-import type { Parent } from './auth';
-import { listChildren, listTemplates, saveChild } from './child-storage';
-import { jakartaToday } from './calendar';
-import { ApiError, json } from './http';
+import { ruleRoutes } from './rules.ts';
+import { prizes } from './prizes.ts';
+import { scoring } from './scoring.ts';
+import { getActivityReview } from './activity-review.ts';
+import type { ChildIntent } from '../shared/profiles.ts';
+import type { Parent } from './auth.ts';
+import { listChildren, listTemplates, saveChild } from './child-storage.ts';
+import { jakartaToday } from './calendar.ts';
+import { ApiError, json } from './http.ts';
 
 function invalid(message: string): never { throw new ApiError(422, 'INVALID_INPUT', message); }
 

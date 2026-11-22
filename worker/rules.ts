@@ -1,8 +1,8 @@
-import type { AssignmentDetail, RoutineActivity, RuleSave, TemplateDetail, TemplateVersion } from '../shared/profiles';
-import type { Parent } from './auth';
-import { dayBounds, jakartaToday, nextDate } from './calendar';
-import { eligibleTemplates } from './child-storage';
-import { ApiError, json } from './http';
+import type { AssignmentDetail, RoutineActivity, RuleSave, TemplateDetail, TemplateVersion } from '../shared/profiles.ts';
+import type { Parent } from './auth.ts';
+import { dayBounds, jakartaToday, nextDate } from './calendar.ts';
+import { eligibleTemplates } from './child-storage.ts';
+import { ApiError, json } from './http.ts';
 
 const allWeekdays = [1, 2, 3, 4, 5, 6, 7];
 const invalid = (message: string): never => { throw new ApiError(422, 'INVALID_INPUT', message); };

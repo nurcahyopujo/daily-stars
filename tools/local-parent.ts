@@ -1,9 +1,9 @@
 import { join } from 'node:path';
 import { getPlatformProxy } from 'wrangler';
 import type { Plugin } from 'vite';
-import { jakartaToday } from '../worker/calendar';
-import { ApiError, json, mutationBoundary } from '../worker/http';
-import { profileRoutes } from '../worker/profiles';
+import { jakartaToday } from '../worker/calendar.ts';
+import { ApiError, json, mutationBoundary } from '../worker/http.ts';
+import { profileRoutes } from '../worker/profiles.ts';
 
 export function localParent(databasePath?: string): Plugin {
   return {

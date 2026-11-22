@@ -1,7 +1,7 @@
-import type { Child, ChildIntent, TemplateSummary, TemplateVersion } from '../shared/profiles';
-import type { Parent } from './auth';
-import { dayBounds, jakartaToday, nextDate } from './calendar';
-import { ApiError } from './http';
+import type { Child, ChildIntent, TemplateSummary, TemplateVersion } from '../shared/profiles.ts';
+import type { Parent } from './auth.ts';
+import { dayBounds, jakartaToday, nextDate } from './calendar.ts';
+import { ApiError } from './http.ts';
 
 const childColumns = `id, display_name AS displayName, start_date AS startDate,
   archive_effective_date AS archiveEffectiveDate, revision`;

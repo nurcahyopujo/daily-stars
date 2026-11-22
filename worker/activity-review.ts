@@ -1,6 +1,6 @@
-import { reviewActivities, reviewDailyStars, type ActivityReviewData } from '../shared/activity-review';
-import { readActivityReview } from './activity-review-storage';
-import { shiftDate } from './calendar';
+import { reviewActivities, reviewDailyStars, type ActivityReviewData } from '../shared/activity-review.ts';
+import { readActivityReview } from './activity-review-storage.ts';
+import { shiftDate } from './calendar.ts';
 
 export async function getActivityReview(
   db: D1Database,
