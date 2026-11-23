@@ -6,20 +6,11 @@
 }
 .activity-review a { color: var(--color-action); }
 .activity-review > a { display: inline-flex; align-items: center; min-height: 44px; }
-.activity-review select {
-  display: block;
-  height: 44px;
+/* Period selector: the shadcn Select trigger laid out under its label. Field
+   styling (border, background, focus) is shared from child-profiles.css. */
+.activity-review button[data-slot=select-trigger] {
   margin-top: var(--space-small);
-  padding: var(--space-small);
-  border: 1px solid var(--color-field-border);
-  border-radius: var(--radius-control);
-  background: white;
-  color: inherit;
-  font: inherit;
-}
-.activity-review select:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 3px;
+  min-width: 200px;
 }
 .activity-review table {
   width: 100%;

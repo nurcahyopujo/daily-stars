@@ -5,6 +5,13 @@ const origin = 'http://127.0.0.1:4174';
 
 test.use({ extraHTTPHeaders: { 'x-daily-stars-test-clock': 'fixed' } });
 
+// The shadcn Select renders a combobox button + listbox popup, not a native
+// <select>, so drive it by opening and clicking the option.
+async function pick(page: Page, combo: string, option: string) {
+  await page.getByRole('combobox', { name: combo }).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+}
+
 async function openDay(page: Page, name: string) {
   await page.goto(origin + '/children');
   const child = page.getByRole('listitem').filter({
@@ -50,16 +57,16 @@ test('parent reviews completed household days and switches to four weeks', async
   await page.screenshot({ path: info.outputPath('activity-review-empty.png'), fullPage: true });
 
   const period = page.getByRole('combobox', { name: 'Review period', exact: true });
-  await period.focus();
-  await expect(period).toBeFocused();
-  await period.selectOption({ label: 'Last 4 weeks' });
+  await period.click();
+  await page.getByRole('option', { name: 'Last 4 weeks', exact: true }).click();
+  await expect(period).toContainText('Last 4 weeks');
   await expect(page.getByText('Current period: 2026-10-12 to 2026-11-08')).toBeVisible();
   await expect(page.getByText('Previous period: 2026-09-14 to 2026-10-11')).toBeVisible();
   await expect(stars.getByRole('row')).toHaveCount(29);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(280);
 
   await context.setOffline(true);
-  await period.selectOption({ label: 'Last 7 days' });
+  await pick(page, 'Review period', 'Last 7 days');
   await expect(page.getByRole('alert')).toContainText('Couldn’t load the activity review.');
   await page.screenshot({ path: info.outputPath('activity-review-error.png'), fullPage: true });
   await context.setOffline(false);
@@ -165,7 +172,7 @@ test('parent compares recorded outcomes using the assignments, schedules, and ac
   await expect(unassigned.getByRole('region', { name: 'Current period' }).getByText('Not scheduled')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Make the bed today' })).toHaveCount(0);
 
-  await page.getByRole('combobox', { name: 'Review period' }).selectOption({ label: 'Last 4 weeks' });
+  await pick(page, 'Review period', 'Last 4 weeks');
   await expect(current.getByText('5 of 9 recorded')).toBeVisible();
   await expect(duplicate.getByRole('region', { name: 'Current period' }).getByText('0 of 2 recorded')).toBeVisible();
 
@@ -200,13 +207,13 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await expect(cellsOn(routineDate)).toHaveText(['+2', '+5', '+7']);
   await page.screenshot({ path: info.outputPath('activity-review.png'), fullPage: true });
 
-  await page.getByRole('combobox', { name: 'Review period' }).selectOption({ label: 'Last 4 weeks' });
+  await pick(page, 'Review period', 'Last 4 weeks');
   await expect(cellsOn(previousScoreDate)).toHaveText(['+1', '0', '+1']);
 
   await page.getByRole('link', { name: /Back to day/ }).click();
   await expect(page.getByRole('button', { name: /Activity date/ })).toHaveAccessibleName(/6 Nov 2026/);
   await oneOff.getByRole('button', { name: 'Edit entry' }).click();
-  await page.getByRole('combobox', { name: 'Entry type' }).selectOption({ label: 'Deduction' });
+  await pick(page, 'Entry type', 'Deduction');
   await page.getByRole('spinbutton', { name: 'Stars', exact: true }).fill('3');
   await page.getByRole('button', { name: 'Review entry' }).click();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();

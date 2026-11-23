@@ -132,9 +132,21 @@
 .score-day h1 { font-size: clamp(26px,7vw,32px); overflow-wrap: anywhere; }
 .score-day a,.child-profiles-card a { color: var(--color-action); }
 .score-day article,.score-day form { margin: 12px 0; background:var(--color-surface); border:1px solid var(--color-border); border-radius:18px; padding:var(--space-card); overflow-wrap:anywhere; }
-.score-summary,.score-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; }
+.score-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; }
 .score-stars { font-weight:650; font-variant-numeric:tabular-nums; }
 .score-stars span { color:var(--color-focus); }
+.score-stars-glyphs i { display:inline-block; font-style:normal; transform-origin:center; }
+/* Awarding an outcome: each star pops in with a short gold stagger, echoing the
+   day hero's star language, to confirm the tap landed. */
+.score-stars-glyphs.is-awarded i { animation: score-star-award .44s cubic-bezier(.2,.8,.2,1.2) both; animation-delay: calc(var(--i) * 55ms); }
+@keyframes score-star-award {
+  0% { opacity:0; transform:scale(.1) rotate(-20deg); }
+  55% { opacity:1; transform:scale(1.22) rotate(6deg); }
+  100% { opacity:1; transform:scale(1) rotate(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .score-stars-glyphs.is-awarded i { animation: none; }
+}
 .score-day summary { cursor:pointer; min-height:44px; padding:10px 0; font-size: 13px; color: var(--color-action); font-weight: 600; }
 .score-day summary:focus-visible { outline:3px solid var(--color-focus); outline-offset:3px; border-radius: 8px; }
 .score-day form label { margin:8px 0; }
@@ -161,17 +173,37 @@
 .child-profiles .scoring-day-field [data-slot=popover-trigger]:disabled { opacity: .55; }
 .child-profiles .scoring-day-field [data-slot=popover-trigger]:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 
+/* shadcn Select triggers render as <button>; the blanket button rule above
+   would paint them solid green, so reskin them as Family Notebook fields. The
+   popup itself is portalled out and already reads from the theme tokens. */
+.child-profiles button[data-slot=select-trigger] { min-height: 44px; height: auto; padding: 10px 14px; border: 1px solid var(--color-field-border); border-radius: var(--radius-control); background: white; color: #293d35; font-weight: 400; }
+.child-profiles button[data-slot=select-trigger]:not(:disabled):hover { background: #fcfbf6; filter: none; }
+.child-profiles button[data-slot=select-trigger][data-popup-open] { border-color: var(--color-action); }
+.child-profiles button[data-slot=select-trigger]:disabled { opacity: .55; }
+.child-profiles button[data-slot=select-trigger]:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.child-profiles button[data-slot=select-trigger] svg { color: #59665e; }
+
 /* Past-date notice uses the gold accent as a small warmth, never as an action. */
 .scoring-day-pastnote { display: flex; align-items: center; gap: 10px; margin: -4px 0 20px; padding: 11px 14px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; color: #5f4a16; font-size: 13.5px; line-height: 1.45; }
 .scoring-day-pastnote svg { flex: none; color: #8a681f; }
 .scoring-day-pastnote strong { color: #4a3a12; font-weight: 700; }
 
-/* Day summary: today's net beside the spendable balance. */
-.scoring-day .score-summary { margin: 24px 0; padding: 16px 18px; border-radius: 18px; background: var(--color-action-soft); color: var(--color-action); }
-.scoring-day .score-summary > span { flex: 1 1 130px; display: flex; flex-direction: column; gap: 2px; }
-.scoring-day .score-summary > span + span { padding-left: 16px; border-left: 1px solid rgb(54 88 66 / 18%); }
-.scoring-day .score-summary .score-stars { order: -1; font-size: 26px; line-height: 1.05; letter-spacing: -0.02em; }
-.scoring-day .score-summary > span { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #4f6a55; }
+/* Day hero: the day's own stars lead in the gold star promoted from the child
+   cards; the running total sits beside them as a quiet reference stat. */
+.day-stars { display: flex; align-items: center; gap: 18px; margin: 24px 0; padding: 20px 22px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); }
+.day-stars-primary { flex: 1 1 auto; display: flex; align-items: center; gap: 16px; min-width: 0; margin: 0; }
+.day-stars .star-balance-star { position: relative; display: inline-flex; flex: none; filter: drop-shadow(0 3px 7px rgb(138 104 31 / 36%)); }
+.day-stars .star-balance-glints { inset: -9px; }
+.day-stars .star-balance-figure { display: flex; flex-direction: column; min-width: 0; line-height: 1.04; }
+.day-stars .star-balance-value { font-size: clamp(40px, 12vw, 48px); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; color: #293d35; }
+.day-stars.is-down .star-balance-value { color: #9a5b2b; }
+.day-stars.is-zero .star-balance-value { color: #4f6a55; }
+.day-stars .star-balance-label { margin-top: 5px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a681f; }
+.day-stars-total { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0; margin: 0; padding-left: 18px; border-left: 1px solid rgb(41 61 53 / 12%); text-align: right; }
+.day-stars-total-figure { display: inline-flex; align-items: center; gap: 8px; }
+.day-stars-total .star-balance-star { filter: drop-shadow(0 2px 4px rgb(138 104 31 / 28%)); }
+.day-stars-total-value { font-family: var(--font-heading); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; color: #293d35; }
+.day-stars-total .star-balance-label { margin-top: 5px; color: #4f6a55; }
 
 .scoring-day-entries > h2 { margin: 30px 0 12px; }
 .scoring-day-entries > h2 + p, .activity-review > h2 + p { padding: 14px 16px; border-radius: var(--radius-control); background: var(--color-action-soft); color: var(--color-action); font-size: 14px; }
@@ -181,7 +213,7 @@
 .scoring-day-entry-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; }
 .scoring-day-entry-head h3 { margin: 0; font-size: 17px; }
 .scoring-day-tag { flex: none; padding: 2px 9px; border-radius: 999px; background: #eef1e8; color: #59665e; font-size: 11px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; }
-.scoring-day-status { margin: 8px 0 14px !important; font-size: 14px; font-weight: 500; }
+.scoring-day-status { margin: 8px 0 14px !important; font-size: 14px; font-weight: 500; transition: color .3s ease; }
 .scoring-day-status.is-pending { color: #59665e; }
 .scoring-day-status.is-done { color: var(--color-action); }
 .scoring-day-status.is-needs { color: #9a5b2b; }

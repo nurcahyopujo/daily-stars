@@ -1,5 +1,5 @@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from "@/components/ui/table";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
@@ -7,6 +7,11 @@ import type { ActivityReviewData, DateRange, OutcomeCounts } from '../../../shar
 import type { Child } from '../../../shared/profiles';
 import { requestJson, RequestError } from './requests';
 import './activity-review.css';
+
+const REVIEW_PERIODS = [
+  { value: '7', label: 'Last 7 days' },
+  { value: '28', label: 'Last 4 weeks' },
+] as const;
 
 function Dates({ range }: { range: DateRange }) {
   return <><time dateTime={range.start}>{range.start}</time> to <time dateTime={range.end}>{range.end}</time></>;
@@ -71,7 +76,7 @@ export function ActivityReview({ child, date, onSessionExpired }: { child: Child
   const [data, setData] = useState<ActivityReviewData | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const periodControl = useRef<HTMLSelectElement>(null);
+  const periodControl = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -93,14 +98,27 @@ export function ActivityReview({ child, date, onSessionExpired }: { child: Child
       <Link to="/children/$childId/day" params={{ childId: child.id }} search={date ? { date } : {}}>← Back to day</Link>
       <h1 id="activity-review-title">{child.displayName}’s activity review</h1>
       <label htmlFor="activity-review-period">Review period</label>
-      <NativeSelect id="activity-review-period" ref={periodControl} value={period} onChange={(event) => {
-        setData(null);
-        setError(false);
-        setPeriod(event.target.value);
-      }}>
-        <NativeSelectOption value="7">Last 7 days</NativeSelectOption>
-        <NativeSelectOption value="28">Last 4 weeks</NativeSelectOption>
-      </NativeSelect>
+      <Select
+        items={REVIEW_PERIODS}
+        value={period}
+        onValueChange={(next) => {
+          if (next == null) return;
+          setData(null);
+          setError(false);
+          setPeriod(next);
+        }}
+      >
+        <SelectTrigger id="activity-review-period" ref={periodControl} className="activity-review-period">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {REVIEW_PERIODS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {!data && !error && <p role="status">Loading activity review…</p>}
       {error && <div role="alert">
         <p>Couldn’t load the activity review. Check your connection and try again.</p>

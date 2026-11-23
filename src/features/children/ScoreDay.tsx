@@ -1,16 +1,17 @@
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HistoryIcon } from "lucide-react";
 import { Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Child } from '../../../shared/profiles';
-import type { Day, Score } from '../../../shared/scoring';
+import type { Activity, Day, Score } from '../../../shared/scoring';
 import { requestJson, RequestError } from './requests';
+import { DayStars } from './StarBalance';
 
 type Action = { method: string; path: string; body: Record<string, unknown>; key: string };
 const outstanding = new Map<string, Action>();
@@ -18,24 +19,170 @@ export function clearScoreSaves() {
   outstanding.clear();
 }
 
+function latestOf(history: Score[], stream: string): Score | undefined {
+  let best: Score | undefined;
+  for (const row of history)
+    if (row.stream === stream && (best?.revision ?? -1) < row.revision) best = row;
+  return best;
+}
+
+// Build the day as it will look once an outcome lands, so the UI can show it
+// immediately. `net`, `balance`, and `total` all shift by the points delta; the
+// quiet background reconcile replaces this guess with the server's truth.
+function withOutcome(prev: Day, a: Activity, outcome: string): Day {
+  const r = latestOf(prev.history, a.stream);
+  const oldPoints = r && r.outcome !== 'unrecorded' ? r.points : 0;
+  const newPoints =
+    outcome === 'done_correctly' ? a.reward : outcome === 'needs_improvement' ? -(a.penalty ?? 0) : 0;
+  const delta = newPoints - oldPoints;
+  const entry: Score = {
+    stream: a.stream,
+    revision: (r?.revision ?? 0) + 1,
+    points: newPoints,
+    reason: '',
+    outcome,
+    actor: 'You',
+    recorded: new Date().toISOString(),
+  };
+  return {
+    ...prev,
+    history: [...prev.history, entry],
+    net: prev.net + delta,
+    total: prev.total + delta,
+    balance: prev.balance === undefined ? undefined : prev.balance + delta,
+  };
+}
+
+const ENTRY_TYPES = [
+  { value: 1, label: 'Award' },
+  { value: -1, label: 'Deduction' },
+] as const;
+
 type Draft = { stream?: string; revision?: number; sign: number; amount: string; reason: string };
 export function Stars({
   value,
   small = false,
   signed = small,
+  animate = false,
 }: {
   value: number;
   small?: boolean;
   signed?: boolean;
+  animate?: boolean;
 }) {
   const count = small && value > 0 && value <= 5 ? value : 1;
   return (
     <span className="score-stars" aria-label={value + ' stars'}>
-      <span aria-hidden="true">{'★'.repeat(count)}</span> {signed && value > 0 ? '+' : ''}
+      <span className={`score-stars-glyphs${animate ? ' is-awarded' : ''}`} aria-hidden="true">
+        {Array.from({ length: count }, (_, i) => (
+          <i key={i} style={{ '--i': i } as CSSProperties}>★</i>
+        ))}
+      </span>{' '}
+      {signed && value > 0 ? '+' : ''}
       {value}
     </span>
   );
 }
+
+const NO_ENTRIES: Score[] = [];
+
+function StreamHistory({ entries }: { entries: Score[] }) {
+  if (!entries.length) return null;
+  return (
+    <Collapsible>
+      <CollapsibleTrigger>History</CollapsibleTrigger>
+      <CollapsibleContent><ol>
+        {entries.map((r) => (
+          <li key={r.revision}>
+            {r.outcome.replaceAll('_', ' ')} · {r.points} stars {r.reason} · {r.actor} ·{' '}
+            {new Date(r.recorded).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' })} Jakarta
+          </li>
+        ))}
+      </ol></CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+type RowProps = {
+  activity: Activity;
+  score: Score | undefined;
+  historyEntries: Score[];
+  isToday: boolean;
+  animate: boolean;
+  starsKey: string;
+  onRecord: (activity: Activity, outcome: string, revision: number) => void;
+};
+
+function sameEntries(a: Score[], b: Score[]) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+// One activity's row. Memoised so a tap on another activity — or any unrelated
+// state change (busy, pending, flash on a sibling) — leaves this row untouched.
+// The custom comparator leans on referentially stable props: `score` and the
+// history entries keep the same object identities for rows that didn't change.
+const ActivityRow = memo(function ActivityRow({
+  activity: a,
+  score: r,
+  historyEntries,
+  isToday,
+  animate,
+  starsKey,
+  onRecord,
+}: RowProps) {
+  const recorded = r && r.outcome !== 'unrecorded';
+  const statusTone = !recorded ? 'is-pending' : r!.outcome === 'done_correctly' ? 'is-done' : 'is-needs';
+  return (
+    <article className="scoring-day-entry">
+      <div className="scoring-day-entry-head">
+        <h3>{a.label}</h3>
+        <span className="scoring-day-tag">{a.template}</span>
+      </div>
+      <p className={`scoring-day-status ${statusTone}`}>
+        {!recorded ? (
+          isToday ? 'Pending' : 'Unrecorded'
+        ) : (
+          <>
+            <Stars small value={r!.points} animate={animate} key={starsKey} />{' '}
+            ·{' '}
+            {r!.outcome === 'done_correctly' ? 'Done correctly' : 'Needs improvement'}
+          </>
+        )}
+      </p>
+      <div className="score-actions scoring-day-outcomes">
+        {(
+          [
+            ['done_correctly', 'Done correctly', a.reward],
+            ['needs_improvement', 'Needs improvement', -(a.penalty ?? 0)],
+          ] as const
+        ).map(([outcome, label, amount]) => (
+          <Button
+            key={outcome}
+            aria-pressed={r?.outcome === outcome}
+            onClick={() => onRecord(a, outcome, r?.revision ?? 0)}
+          >
+            {label} ({Number(amount) > 0 ? '+' : ''}
+            {amount})
+          </Button>
+        ))}
+        {r && r.outcome !== 'unrecorded' && (
+          <Button onClick={() => onRecord(a, 'unrecorded', r.revision)}>Reset</Button>
+        )}
+      </div>
+      <StreamHistory entries={historyEntries} />
+    </article>
+  );
+}, (prev, next) =>
+  prev.activity === next.activity &&
+  prev.score === next.score &&
+  prev.isToday === next.isToday &&
+  prev.animate === next.animate &&
+  prev.starsKey === next.starsKey &&
+  prev.onRecord === next.onRecord &&
+  sameEntries(prev.historyEntries, next.historyEntries),
+);
 
 export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
   child: Child; today: string; date?: string; onDateChange: (date: string) => void;
@@ -59,7 +206,16 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [voidTarget, setVoidTarget] = useState<Score | null>(null);
+  // Marks the activity whose stars just changed, so only its row replays the
+  // award animation (a fresh `n` re-keys the stars to retrigger on each tap).
+  const [flash, setFlash] = useState<{ stream: string; n: number } | null>(null);
+  const flashSeq = useRef(0);
   const path = '/api/children/' + encodeURIComponent(child.id) + '/days/' + date;
+  const pathRef = useRef(path);
+  pathRef.current = path;
+  // Latest data without re-binding the stable handlers below on every render.
+  const dataRef = useRef(data);
+  dataRef.current = data;
   useEffect(() => {
     const controller = new AbortController();
     setData(null);
@@ -72,8 +228,28 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
       });
     return () => controller.abort();
   }, [path, reload]);
-  async function send(action: Action) {
+  // Pull the authoritative day back in without blanking the view, ignoring the
+  // response if the visible date has since changed.
+  const reconcile = useCallback(async (atPath: string): Promise<Day | null> => {
+    try {
+      const fresh = await requestJson<Day>(atPath);
+      if (pathRef.current === atPath) {
+        setData(fresh);
+        return fresh;
+      }
+    } catch {
+      // Offline or server error: keep what's on screen. The next action or a
+      // manual reload will resync.
+    }
+    return null;
+  }, []);
+  // Resolves to the reconciled day on success (used to flash the changed entry),
+  // or null on failure/conflict.
+  const send = useCallback(async (action: Action, optimistic?: (prev: Day) => Day): Promise<Day | null> => {
     outstanding.set(child.id, action);
+    const snapshot = optimistic ? dataRef.current : null;
+    if (optimistic) setData((prev) => (prev ? optimistic(prev) : prev));
+    const atPath = pathRef.current;
     setBusy(true);
     setPending(action);
     setError('');
@@ -87,7 +263,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
       setPending(null);
       setDraft(null);
       setConfirm(false);
-      refresh((n) => n + 1);
+      return await reconcile(atPath);
     } catch (e) {
       if (e instanceof RequestError && e.status >= 400 && e.status < 500 && e.status !== 401) {
         outstanding.delete(child.id);
@@ -97,37 +273,39 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
           setConflict(action);
           setDraft(null);
           setConfirm(false);
-          refresh((n) => n + 1);
+          await reconcile(atPath); // load the server's current value; drops the optimistic guess
+        } else if (snapshot) {
+          setData(snapshot); // rejected outright: undo the optimistic change
         }
       } else setError('Save not confirmed. Keep this page open and retry.');
+      return null;
     } finally {
       setBusy(false);
     }
-  }
-  function save(method: string, stream: string, body: Record<string, unknown>) {
-    void send({ method, path: path + '/' + stream, body, key: crypto.randomUUID() });
-  }
-  function history(stream: string) {
-    const entries = data!.history.filter((row) => row.stream === stream);
-    return (
-      entries.length > 0 && (
-        <Collapsible>
-          <CollapsibleTrigger>History</CollapsibleTrigger>
-          <CollapsibleContent><ol>
-            {entries.map((r) => (
-              <li key={r.revision}>
-                {r.outcome.replaceAll('_', ' ')} · {r.points} stars {r.reason} · {r.actor} ·{' '}
-                {new Date(r.recorded).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' })} Jakarta
-              </li>
-            ))}
-          </ol></CollapsibleContent>
-        </Collapsible>
-      )
+  }, [child.id, reconcile]);
+  const save = useCallback((
+    method: string,
+    stream: string,
+    body: Record<string, unknown>,
+    optimistic?: (prev: Day) => Day,
+  ): Promise<Day | null> =>
+    send({ method, path: pathRef.current + '/' + stream, body, key: crypto.randomUUID() }, optimistic),
+  [send]);
+  // Record an activity outcome: flash that row's stars, then save optimistically.
+  const onRecord = useCallback((activity: Activity, outcome: string, revision: number) => {
+    setFlash({ stream: activity.stream, n: ++flashSeq.current });
+    void save('PUT', activity.stream, { expectedRevision: revision, outcome }, (prev) =>
+      withOutcome(prev, activity, outcome),
     );
-  }
+  }, [save]);
   const latest = new Map<string, Score>();
-  for (const row of data?.history ?? [])
+  const historyByStream = new Map<string, Score[]>();
+  for (const row of data?.history ?? []) {
     if ((latest.get(row.stream)?.revision ?? 0) < row.revision) latest.set(row.stream, row);
+    const entries = historyByStream.get(row.stream);
+    if (entries) entries.push(row);
+    else historyByStream.set(row.stream, [row]);
+  }
   const current = conflict && latest.get(conflict.path.slice(path.length + 1));
   return (
     <section className="child-profiles score-day scoring-day">
@@ -232,73 +410,22 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
       {!data && !error && <p role="status">Loading day…</p>}
       {data && (
         <>
-          <p className="score-summary">
-            <span>
-              <Stars signed value={data.net} /> {date === today ? 'today' : 'on this date'}
-            </span>
-            <span>
-              <Stars value={data.balance ?? data.total} /> balance
-            </span>
-          </p>
+          <DayStars today={data.net} total={data.balance ?? data.total} past={date !== today} />
           <fieldset className="scoring-day-entries" disabled={!!pending || !!draft || !!conflict}>
             <h2>Activities</h2>
             {!data.activities.length && <p>No activities scheduled.</p>}
-            {data.activities.map((a) => {
-              const r = latest.get(a.stream);
-              const recorded = r && r.outcome !== 'unrecorded';
-              const statusTone = !recorded
-                ? 'is-pending'
-                : r!.outcome === 'done_correctly'
-                  ? 'is-done'
-                  : 'is-needs';
-              return (
-                <article key={a.stream} className="scoring-day-entry">
-                  <div className="scoring-day-entry-head">
-                    <h3>{a.label}</h3>
-                    <span className="scoring-day-tag">{a.template}</span>
-                  </div>
-                  <p className={`scoring-day-status ${statusTone}`}>
-                    {!recorded ? (
-                      date === today ? (
-                        'Pending'
-                      ) : (
-                        'Unrecorded'
-                      )
-                    ) : (
-                      <>
-                        <Stars small value={r!.points} /> ·{' '}
-                        {r!.outcome === 'done_correctly' ? 'Done correctly' : 'Needs improvement'}
-                      </>
-                    )}
-                  </p>
-                  <div className="score-actions scoring-day-outcomes">
-                    {[
-                      ['done_correctly', 'Done correctly', a.reward],
-                      ['needs_improvement', 'Needs improvement', -(a.penalty ?? 0)],
-                    ].map(([outcome, label, amount]) => (
-                      <Button
-                        key={outcome}
-                        aria-pressed={r?.outcome === outcome}
-                        onClick={() => save('PUT', a.stream, { expectedRevision: r?.revision ?? 0, outcome })}
-                      >
-                        {label} ({Number(amount) > 0 ? '+' : ''}
-                        {amount})
-                      </Button>
-                    ))}
-                    {r && r.outcome !== 'unrecorded' && (
-                      <Button
-                        onClick={() =>
-                          save('PUT', a.stream, { expectedRevision: r.revision, outcome: 'unrecorded' })
-                        }
-                      >
-                        Reset
-                      </Button>
-                    )}
-                  </div>
-                  {history(a.stream)}
-                </article>
-              );
-            })}
+            {data.activities.map((a) => (
+              <ActivityRow
+                key={a.stream}
+                activity={a}
+                score={latest.get(a.stream)}
+                historyEntries={historyByStream.get(a.stream) ?? NO_ENTRIES}
+                isToday={date === today}
+                animate={flash?.stream === a.stream}
+                starsKey={flash?.stream === a.stream ? `award-${flash.n}` : 'stars'}
+                onRecord={onRecord}
+              />
+            ))}
             <h2>One-off entries</h2>
             <div className="score-actions">
               {[1, -1].map((sign) => (
@@ -315,7 +442,13 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
                     <h3>{r.reason}</h3>
                   </div>
                   <p className={`scoring-day-status ${r.outcome === 'void' ? 'is-void' : r.points > 0 ? 'is-done' : 'is-needs'}`}>
-                    <Stars small value={r.points} /> ·{' '}
+                    <Stars
+                      small
+                      value={r.points}
+                      animate={flash?.stream === r.stream}
+                      key={flash?.stream === r.stream ? `award-${flash.n}` : 'stars'}
+                    />{' '}
+                    ·{' '}
                     {r.outcome === 'void' ? 'Voided' : r.points > 0 ? 'Award' : 'Deduction'}
                   </p>
                   {r.outcome !== 'void' && (
@@ -338,7 +471,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
                       </Button>
                     </div>
                   )}
-                  {history(r.stream)}
+                  <StreamHistory entries={historyByStream.get(r.stream) ?? NO_ENTRIES} />
                 </article>
               ))}
           </fieldset>
@@ -351,7 +484,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
               <AlertDialogFooter className="modal-footer">
                 <AlertDialogCancel className="modal-cancel">Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={() => {
-                  if (voidTarget) save('PATCH', voidTarget.stream, { expectedRevision: voidTarget.revision, void: true });
+                  if (voidTarget) void save('PATCH', voidTarget.stream, { expectedRevision: voidTarget.revision, void: true });
                   setVoidTarget(null);
                 }}>Void entry</AlertDialogAction>
               </AlertDialogFooter>
@@ -378,10 +511,26 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
                       setConfirm(true);
                       return;
                     }
-                    save(draft.stream ? 'PATCH' : 'POST', draft.stream ?? 'one-offs', {
+                    const editStream = draft.stream;
+                    const before = new Set(
+                      (dataRef.current?.history ?? [])
+                        .map((h) => h.stream)
+                        .filter((s) => s.startsWith('one-offs/')),
+                    );
+                    void save(draft.stream ? 'PATCH' : 'POST', draft.stream ?? 'one-offs', {
                       points: draft.sign * Number(draft.amount),
                       reason: draft.reason.trim(),
                       ...(draft.stream ? { expectedRevision: draft.revision } : {}),
+                    }).then((fresh) => {
+                      if (!fresh) return;
+                      // Edit knows its stream; a new entry is the one-off stream
+                      // the server added that wasn't present before.
+                      const stream =
+                        editStream ??
+                        fresh.history
+                          .map((h) => h.stream)
+                          .find((s) => s.startsWith('one-offs/') && !before.has(s));
+                      if (stream) setFlash({ stream, n: ++flashSeq.current });
                     });
                   }}
                 >
@@ -410,14 +559,22 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
                         <>
                           <label>
                             Entry type{' '}
-                            <NativeSelect
-                              className="w-full"
+                            <Select
+                              items={ENTRY_TYPES}
                               value={draft.sign}
-                              onChange={(e) => setDraft({ ...draft, sign: Number(e.target.value) })}
+                              onValueChange={(sign) => { if (sign != null) setDraft({ ...draft, sign }); }}
                             >
-                              <NativeSelectOption value={1}>Award</NativeSelectOption>
-                              <NativeSelectOption value={-1}>Deduction</NativeSelectOption>
-                            </NativeSelect>
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ENTRY_TYPES.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </label>
                           <label>
                             Stars{' '}
