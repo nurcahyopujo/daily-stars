@@ -10,7 +10,7 @@ async function openDay(page: Page, name: string) {
   const child = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { name, exact: true }),
   });
-  await child.getByRole('link', { name: 'Open today' }).click();
+  await child.getByRole('link', { name, exact: true }).click();
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
 }
 
@@ -40,6 +40,10 @@ test('parent reviews completed household days and switches to four weeks', async
   await expect(page.getByText('Current period: 2026-11-02 to 2026-11-08')).toBeVisible();
   await expect(page.getByText('Previous period: 2026-10-26 to 2026-11-01')).toBeVisible();
   const stars = page.getByRole('table', { name: 'Daily stars' });
+  const tableRegion = page.getByRole('region', { name: 'Daily stars' });
+  await tableRegion.focus();
+  await expect(tableRegion).toBeFocused();
+  expect(await tableRegion.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect(stars.getByRole('row')).toHaveCount(8);
   await expect(stars.getByRole('rowheader', { name: '2026-11-08' })).toBeVisible();
   await expect(stars.getByRole('rowheader', { name: '2026-11-09' })).toHaveCount(0);
@@ -210,8 +214,14 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await expect(cellsOn(routineDate)).toHaveText(['+2', '-3', '-1']);
 
   await page.getByRole('link', { name: /Back to day/ }).click();
-  page.once('dialog', (dialog) => dialog.accept());
   await oneOff.getByRole('button', { name: 'Void entry' }).click();
+  const voidDialog = page.getByRole('alertdialog', { name: 'Void entry?' });
+  await expect(voidDialog).toContainText('This is final.');
+  await voidDialog.screenshot({ path: info.outputPath('void-confirmation.png') });
+  await voidDialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(oneOff.getByRole('button', { name: 'Void entry' })).toBeFocused();
+  await oneOff.getByRole('button', { name: 'Void entry' }).click();
+  await voidDialog.getByRole('button', { name: 'Void entry' }).click();
   await expect(oneOff.getByText('Voided', { exact: false })).toBeVisible();
   await openReviewFromDay(page, name);
   await expect(cellsOn(routineDate)).toHaveText(['+2', '0', '+2']);

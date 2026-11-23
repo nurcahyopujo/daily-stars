@@ -14,33 +14,40 @@ colors:
   white: "#fff"
 typography:
   page-title:
-    fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontFamily: '"Figtree Variable", ui-sans-serif, system-ui, sans-serif'
     fontSize: "clamp(26px, 7vw, 32px)"
     lineHeight: 1.2
     letterSpacing: "-0.03em"
   display:
-    fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontFamily: '"Figtree Variable", ui-sans-serif, system-ui, sans-serif'
     fontSize: "clamp(42px, 11vw, 58px)"
-    fontWeight: 650
-    lineHeight: 1.12
-    letterSpacing: "-2px"
+    fontWeight: 700
+    lineHeight: 1.1
+    letterSpacing: "-0.025em"
   headline:
-    fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontFamily: '"Figtree Variable", ui-sans-serif, system-ui, sans-serif'
     fontSize: "18px"
-    lineHeight: 1.4
-    letterSpacing: "-0.3px"
+    fontWeight: 680
+    lineHeight: 1.35
+    letterSpacing: "-0.2px"
   title:
-    fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontFamily: '"Figtree Variable", ui-sans-serif, system-ui, sans-serif'
     fontSize: "16px"
+  figure:
+    fontFamily: '"Figtree Variable", ui-sans-serif, system-ui, sans-serif'
+    fontSize: "34px"
+    fontWeight: 700
+    letterSpacing: "-0.02em"
+    fontVariantNumeric: "tabular-nums"
   body:
-    fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontFamily: '"Inter Variable", ui-sans-serif, system-ui, sans-serif'
     fontSize: "16px"
     lineHeight: 1.6
   label:
-    fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontFamily: '"Inter Variable", ui-sans-serif, system-ui, sans-serif'
     fontSize: "14px"
   caption:
-    fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+    fontFamily: '"Inter Variable", ui-sans-serif, system-ui, sans-serif'
     fontSize: "12px"
 rounded:
   control: "12px"
@@ -112,19 +119,20 @@ The palette pairs warm neutrals with a restrained green action color and a muted
 
 ## Typography
 
-**Display Font:** System sans-serif stack.
-**Body Font:** The same system sans-serif stack.
+**Heading Font:** Figtree Variable, self-hosted. Its rounder, friendlier letterforms carry the playful side of the Family Notebook — the wordmark, every heading, and the expressive star/score numerals.
+**Body Font:** Inter Variable, self-hosted. The steady reading and form voice: prose, labels, fields, and dates stay in Inter for maximum legibility and scanability.
 
-**Character:** Direct and readable. Larger headings use tight tracking; labels and supporting text remain compact without sacrificing legibility.
+**Character:** Two faces, each with one job. Figtree adds warmth and personality at the sizes that set the tone; Inter keeps the dense task surfaces calm and readable. Display sizes use tight tracking against Figtree's round shapes; headings balance their wrap; body copy uses pretty wrapping. Star and score figures are set in Figtree with tabular-nums so numbers stay aligned as they change.
 
 ### Hierarchy
-- **Page title:** Responsive management-screen heading.
-- **Display:** Responsive, semibold heading for the welcome screen.
-- **Headline:** Section headings, including profile state headings.
-- **Title:** Child names and dialog headings.
-- **Body:** Main prose and form values.
-- **Label:** Buttons, dates, helper text, and form labels. The welcome eyebrow is a smaller uppercase accent with wide tracking.
-- **Caption:** Small date and count text.
+- **Page title:** Figtree. Responsive management-screen heading.
+- **Display:** Figtree 700. Responsive heading for the welcome screen; balanced wrap, -0.025em tracking.
+- **Headline:** Figtree 680. Section headings, including profile state headings.
+- **Title:** Figtree. Child names and dialog headings.
+- **Figure:** Figtree 700, tabular-nums. The star-balance and score numerals — the emotional center of a child's day.
+- **Body:** Inter. Main prose and form values; pretty wrapping.
+- **Label:** Inter. Buttons, dates, helper text, and form labels. The welcome eyebrow is a smaller uppercase accent with wide tracking.
+- **Caption:** Inter. Small date and count text.
 
 ## Layout
 
@@ -171,4 +179,5 @@ Controls and fields use gently curved 12px corners. Larger cards and dialogs use
 ### Don't:
 - **Don't** use the gold accent as a second primary action color.
 - **Don't** add resting shadows to every card; use tonal layers and borders first.
-- **Don't** replace the system type stack or current corner language when extending the incumbent interface.
+- **Don't** set body copy, form fields, or labels in Figtree, or introduce a third family: headings and numerals are Figtree, everything readable is Inter.
+- **Don't** change the current corner language when extending the incumbent interface.

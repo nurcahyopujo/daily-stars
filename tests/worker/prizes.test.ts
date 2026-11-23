@@ -12,6 +12,10 @@ it('spends existing points once, blocks concurrent overspending, and restores vo
   const write = (id: string, method: string, body: object) => authenticatedFetch(path + '/' + id, {
     method, headers: { Origin: 'https://daily-stars.test', 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
+  const rejected = await write(crypto.randomUUID(), 'PUT', { label: 'Too expensive', cost: 11 });
+  expect(rejected.status).toBe(422);
+  expect(await rejected.json()).toMatchObject({ error: { code: 'INSUFFICIENT_BALANCE' } });
+  expect(await (await authenticatedFetch(path)).json()).toMatchObject({ balance: 10, history: [] });
   const id = crypto.randomUUID();
   const prize = { label: 'Movie', cost: 7 };
   expect((await write(id, 'PUT', prize)).status).toBe(200);

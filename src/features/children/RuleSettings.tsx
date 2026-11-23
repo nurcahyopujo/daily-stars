@@ -1,3 +1,8 @@
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { nextDate } from '../../../worker/calendar';
 import { useHouseholdProfiles } from './useHouseholdProfiles';
 import { useEffect, useRef, useState } from 'react';
@@ -28,13 +33,13 @@ function versionFor(template: TemplateSummary, date: string) {
 function Definition({ version }: { version: TemplateVersion | null }) {
   if (!version) return <p>No template effective today.</p>;
   if (version.retired) return <p>Retired from {version.effectiveDate}.</p>;
-  return <details><summary>{version.name}</summary>
-    <ol>{version.activities.map(activity => <li key={activity.id}>
+  return <Collapsible><CollapsibleTrigger>{version.name}</CollapsibleTrigger>
+    <CollapsibleContent><ol>{version.activities.map(activity => <li key={activity.id}>
       {activity.label} · +{activity.reward} stars
       {activity.penalty ? ` · −${activity.penalty} stars` : ''}
       {' · '}{activity.weekdays?.map(day => weekdays[day - 1]).join(', ') ?? 'Every day'}
-    </li>)}</ol>
-  </details>;
+    </li>)}</ol></CollapsibleContent>
+  </Collapsible>;
 }
 
 export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => void }) {
@@ -51,6 +56,7 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
   const opener = useRef<HTMLElement | null>(null);
   const save = useRuleSave();
   const locked = save.status === 'saving' || save.status === 'uncertain';
+  const modalOpen = Boolean(target) || locked;
   const conflict = save.status === 'rejected' ? save.current : undefined;
   const startToday = draft?.kind === 'assignment' && draft.startToday === true;
   const selectedAssignments = draft?.kind === 'assignment' ? (startToday ? draft.additions ?? [] : draft.ids) : [];
@@ -66,10 +72,13 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
       setTarget(null);
       setDraft(null);
       void reload();
-      opener.current?.focus();
     }
     if (save.status === 'uncertain' && save.signInRequired) onSessionExpired();
   }, [save, reload, onSessionExpired]);
+
+  useEffect(() => {
+    if (!modalOpen) opener.current?.focus();
+  }, [modalOpen]);
 
   useEffect(() => {
     if (!target) return;
@@ -111,6 +120,8 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
   function open(selected: Target, trigger?: HTMLElement) {
     if (trigger) opener.current = trigger;
     clearRuleSave();
+    setDraft(null);
+    setExpanded(null);
     setTarget({ ...selected });
   }
 
@@ -165,11 +176,11 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
   return <section className="child-profiles rule-settings" aria-labelledby="rules-title" aria-busy={loading}>
     <div className="child-profiles-heading">
       <h1 id="rules-title">Templates &amp; assignments</h1>
-      <button type="button" disabled={locked || loading || !data} onClick={event => open({ kind: 'create' }, event.currentTarget)}>Create template</button>
+      <Button type="button" disabled={locked || loading || !data} onClick={event => open({ kind: 'create' }, event.currentTarget)}>Create template</Button>
     </div>
     {loading && <p role="status">Loading templates and assignments…</p>}
     {error && <div role="alert"><p>Couldn’t load templates and assignments.</p>
-      <button type="button" onClick={() => void reload()}>Try again</button>
+      <Button type="button" onClick={() => void reload()}>Try again</Button>
     </div>}
     {data && <>
     <h2>Activity templates</h2>
@@ -183,10 +194,10 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
             {version.retired && <p>Retired from {version.effectiveDate}</p>}
             {template.pending && <p>{template.pending.retired ? 'Retirement' : 'Scheduled change'} · {template.pending.effectiveDate}</p>}
           </div>
-          <button type="button" disabled={locked} onClick={event => open({ kind: 'edit', id: template.id }, event.currentTarget)}
+          <Button type="button" disabled={locked} onClick={event => open({ kind: 'edit', id: template.id }, event.currentTarget)}
             aria-label={`${version.retired ? 'View' : 'Edit'} ${version.name}${version.activities?.[0] ? `, ${version.activities[0].label}` : ''}`}>
             {version.retired ? 'View' : 'Edit'}
-          </button>
+          </Button>
         </li>;
       })}
     </ul>
@@ -194,16 +205,21 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
     {!children.length && <p>No children available for assignment changes.</p>}
     <ul className="child-profiles-list">{children.map(child => <li className="child-profiles-card" key={child.id}>
       <div><p>{child.displayName}</p></div>
-      <button type="button" disabled={locked} onClick={event => open({ kind: 'assignment', child }, event.currentTarget)}
-        aria-label={`Edit assignments for ${child.displayName}`}>Edit assignments</button>
+      <Button type="button" disabled={locked} onClick={event => open({ kind: 'assignment', child }, event.currentTarget)}
+        aria-label={`Edit assignments for ${child.displayName}`}>Edit assignments</Button>
     </li>)}</ul>
     </>}
 
-    {target && <section className="rule-editor" aria-labelledby="rule-editor-title">
+    <Dialog open={modalOpen} onOpenChange={(open) => {
+      if (!open && !locked) { setTarget(null); clearRuleSave(); }
+    }}>
+    <DialogContent showCloseButton={false} className="child-profiles rule-settings child-profiles-modal rule-editor" aria-labelledby="rule-editor-title" aria-describedby={undefined}>
+    {!target && <h3 id="rule-editor-title">Recover rule save</h3>}
+    {target && <>
       <h3 ref={heading} tabIndex={-1} id="rule-editor-title">
         {target.kind === 'create' ? 'Create template' : target.kind === 'assignment' ? `Assignments for ${target.child.displayName}` : 'Template details'}
       </h3>
-      {loadError ? <div role="alert"><p>{loadError}</p><button type="button" onClick={() => open(target)}>Try again</button></div>
+      {loadError ? <div role="alert"><p>{loadError}</p><Button type="button" onClick={() => open(target)}>Try again</Button></div>
         : !draft && <p role="status">Loading rules…</p>}
       {draft && <form onSubmit={event => { event.preventDefault(); submit(); }}>
         <fieldset disabled={locked || Boolean(conflict)}>
@@ -211,16 +227,16 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
             <p><strong>Active today</strong> · {assignmentNames(draft.detail.current?.templateIds ?? [], today)}</p>
             <p><strong>Effective tomorrow</strong> · {assignmentNames(draft.detail.pending?.templateIds ?? draft.detail.current?.templateIds ?? [], tomorrow)}</p>
             <label className="child-profiles-template">
-              <input type="checkbox" checked={startToday} onChange={event => {
+              <Checkbox disabled={locked || Boolean(conflict)} checked={startToday} onCheckedChange={checked => {
                 const saved = (draft.detail.pending ?? draft.detail.current)?.templateIds ?? [];
-                setDraft({ ...draft, startToday: event.target.checked,
+                setDraft({ ...draft, startToday: checked,
                   additions: draft.additions ?? draft.ids.filter(id => !saved.includes(id)
                     && !draft.detail.current?.templateIds.includes(id)
                     && templates.some(template => template.id === id && template.current && !template.current.retired)) });
               }}/>
               <span>Start new templates today<small>Add to today’s checklist and carry the additions into tomorrow’s plan.</small></span>
             </label>
-            <TemplatePicker title={startToday ? 'Templates to add today' : 'Templates in checklist order'} options={assignmentOptions} selected={selectedAssignments}
+            <TemplatePicker title={startToday ? 'Templates to add today' : 'Templates in checklist order'} disabled={locked || Boolean(conflict)} options={assignmentOptions} selected={selectedAssignments}
               onChange={ids => setDraft(startToday ? { ...draft, additions: ids } : { ...draft, ids })}/>
           </> : <>
             {draft.detail && <>
@@ -233,72 +249,71 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
               </>}
             </>}
             {editable && <>
-              <label>Template name<input required maxLength={80} value={draft.name}
+              <label>Template name<Input required maxLength={80} value={draft.name}
                 onChange={event => setDraft({ ...draft, name: event.target.value })}/></label>
               <ol className="rule-activities">{draft.activities.map((activity, index) => {
                 const open = expanded === activity.key;
                 return <li key={activity.key}>
-                  <button type="button" className="rule-activity-toggle" aria-expanded={open}
+                  <Button type="button" className="rule-activity-toggle" aria-expanded={open}
                     aria-controls={`activity-${activity.key}`} onClick={() => setExpanded(open ? null : activity.key)}>
                     {activity.label || 'New activity'}
-                  </button>
+                  </Button>
                   <div id={`activity-${activity.key}`} hidden={!open}>
                     {open && <>
-                      <label>Activity label<input required maxLength={80} value={activity.label}
+                      <label>Activity label<Input required maxLength={80} value={activity.label}
                         onChange={event => editActivity(activity, { label: event.target.value })}/></label>
-                      <label>Reward (stars)<input type="number" required min={1} max={999} value={activity.reward}
+                      <label>Reward (stars)<Input type="number" required min={1} max={999} value={activity.reward}
                         onChange={event => editActivity(activity, { reward: event.target.value })}/></label>
-                      <label>Penalty (optional)<input type="number" min={0} max={999} value={activity.penalty}
+                      <label>Penalty (optional)<Input type="number" min={0} max={999} value={activity.penalty}
                         onChange={event => editActivity(activity, { penalty: event.target.value })}/></label>
                       <fieldset className="rule-weekdays"><legend>Weekdays</legend>
                         {weekdays.map((day, dayIndex) => <label key={day} className="child-profiles-template">
-                          <input type="checkbox" checked={activity.weekdays.includes(dayIndex + 1)}
-                            onChange={event => editActivity(activity, { weekdays: event.target.checked
+                          <Checkbox disabled={locked || Boolean(conflict)} checked={activity.weekdays.includes(dayIndex + 1)}
+                            onCheckedChange={checked => editActivity(activity, { weekdays: checked
                               ? [...activity.weekdays, dayIndex + 1].sort() : activity.weekdays.filter(value => value !== dayIndex + 1) })}/>{day}
                         </label>)}
                       </fieldset>
                       <div className="child-profiles-actions">
-                        <button type="button" disabled={index === 0} onClick={() => setDraft({ ...draft, activities: moveItem(draft.activities, index, -1) })}>Move up</button>
-                        <button type="button" disabled={index === draft.activities.length - 1} onClick={() => setDraft({ ...draft, activities: moveItem(draft.activities, index, 1) })}>Move down</button>
-                        <button type="button" onClick={() => {
+                        <Button type="button" disabled={index === 0} onClick={() => setDraft({ ...draft, activities: moveItem(draft.activities, index, -1) })}>Move up</Button>
+                        <Button type="button" disabled={index === draft.activities.length - 1} onClick={() => setDraft({ ...draft, activities: moveItem(draft.activities, index, 1) })}>Move down</Button>
+                        <Button type="button" onClick={() => {
                           setDraft({ ...draft, activities: draft.activities.filter(item => item.key !== activity.key) });
                           heading.current?.focus();
-                        }}>Remove activity</button>
+                        }}>Remove activity</Button>
                       </div>
                     </>}
                   </div>
                 </li>;
               })}</ol>
               <div className="child-profiles-actions">
-                <button type="button" disabled={draft.activities.length >= 30} onClick={() => {
+                <Button type="button" disabled={draft.activities.length >= 30} onClick={() => {
                   const activity = blankActivity();
                   setDraft({ ...draft, activities: [...draft.activities, activity] });
                   setExpanded(activity.key);
-                }}>Add activity</button>
-                {draft.detail && <button type="button" onClick={() => setDraft({ ...draft, retire: true })}>Retire template</button>}
+                }}>Add activity</Button>
+                {draft.detail && <Button type="button" onClick={() => setDraft({ ...draft, retire: true })}>Retire template</Button>}
               </div>
             </>}
             {draft.retire && <p>From {effectiveDate}, this template will stop appearing on checklists. Earlier dates will keep their rules.</p>}
           </>}
           {!retired && <>
             <p>Effective <time dateTime={effectiveDate}>{effectiveDate}</time> · Jakarta</p>
-            <button type="submit" disabled={draft.kind === 'assignment' ? startToday && !selectedAssignments.length : editable && !draft.activities.length}>
+            <Button type="submit" disabled={draft.kind === 'assignment' ? startToday && !selectedAssignments.length : editable && !draft.activities.length}>
               {draft.kind === 'assignment' ? 'Save assignments' : pendingRetirement ? 'Cancel scheduled retirement'
                 : draft.retire ? 'Confirm retirement' : 'Save template'}
-            </button>
+            </Button>
           </>}
         </fieldset>
         {validation && <p role="alert">{validation}</p>}
       </form>}
       <div className="child-profiles-actions">
-        {draft?.kind === 'template' && draft.retire && !locked && !conflict && <button type="button" onClick={() => setDraft({ ...draft, retire: false })}>Keep editing</button>}
-        <button type="button" disabled={locked} onClick={() => {
-          setTarget(null); clearRuleSave(); opener.current?.focus();
-        }}>{retired ? 'Close' : 'Cancel'}</button>
+        {draft?.kind === 'template' && draft.retire && !locked && !conflict && <Button type="button" onClick={() => setDraft({ ...draft, retire: false })}>Keep editing</Button>}
+        <Button type="button" disabled={locked} onClick={() => {
+          setTarget(null); clearRuleSave();
+        }}>{retired ? 'Close' : 'Cancel'}</Button>
       </div>
-    </section>}
+    </>}
     {save.status === 'saving' && <p role="status">Saving {save.intent.label}…</p>}
-    {save.status === 'success' && <p role="status">Saved {save.intent.label}. Effective {save.result.effectiveDate} · Jakarta.</p>}
     {save.status === 'rejected' && <div className="child-profiles-save"><p role="alert">{save.message}</p>
       {conflict && <div>
         <p><strong>Latest scheduled rules</strong> · Revision {(conflict.pending ?? conflict.current)?.revision}</p>
@@ -309,13 +324,16 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
         {draft?.kind === 'assignment' && <p>{startToday ? 'Add today · ' : ''}{assignmentNames(selectedAssignments, effectiveDate)}</p>}
         {draft?.kind === 'template' && <p>{draft.name} · {draft.detail?.pending?.retired ? 'Cancel retirement'
           : draft.retire ? 'Retire template' : draft.activities.map(activity => `${activity.label} (+${activity.reward})`).join(', ')}</p>}
-        <button type="button" onClick={() => submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</button>
+        <Button type="button" onClick={() => submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
       </div>}
-      {target && <button type="button" onClick={() => { void reload(); open(target); }}>{conflict ? 'Keep current' : 'Reload latest rules'}</button>}
+      {target && <Button type="button" onClick={() => { void reload(); open(target); }}>{conflict ? 'Keep current' : 'Reload latest rules'}</Button>}
     </div>}
     {save.status === 'uncertain' && <div role="alert">
       <p>Save not confirmed for {save.intent.label}. Keep this page open to retain the retry key.</p>
-      <button type="button" onClick={() => void retryRule()}>Check / retry</button>
+      <Button type="button" onClick={() => void retryRule()}>Check / retry</Button>
     </div>}
+    </DialogContent>
+    </Dialog>
+    {save.status === 'success' && <p role="status">Saved {save.intent.label}. Effective {save.result.effectiveDate} · Jakarta.</p>}
   </section>;
 }

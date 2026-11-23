@@ -32,7 +32,7 @@ test('edits a shared routine and recovers a lost response using the original act
   await expect(page).toHaveURL('/templates');
   await expect(page.getByRole('heading', { name: 'Manage children' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Edit Morning routine, Make the bed' }).click();
-  const editor = page.getByRole('region', { name: 'Template details' });
+  const editor = page.getByRole('dialog', { name: 'Template details' });
   await expect(editor.getByText('Affected children on 2026-11-10: Sunny, Robin')).toBeVisible();
   await editor.getByRole('button', { name: 'Make the bed' }).click();
   await editor.getByRole('spinbutton', { name: 'Reward (stars)' }).fill('3');
@@ -65,7 +65,12 @@ test('creates a template and assigns it to an existing child through local D1', 
   await navigate(page, 'Templates & assignments');
   await page.reload();
   await page.getByRole('button', { name: 'Create template', exact: true }).click();
-  const editor = page.getByRole('region', { name: 'Create template' });
+  const editor = page.getByRole('dialog', { name: 'Create template' });
+  await expect(editor).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Create template', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Create template', exact: true }).click();
   await editor.getByRole('textbox', { name: 'Template name' }).fill(template);
   const activity = 'Read a chapter and put the book back on the shelf';
   await editor.getByRole('textbox', { name: 'Activity label' }).fill(activity);
@@ -75,7 +80,7 @@ test('creates a template and assigns it to an existing child through local D1', 
 
   const assignments = page.getByRole('button', { name: `Edit assignments for ${child}` });
   await assignments.click();
-  const form = page.getByRole('region', { name: `Assignments for ${child}` });
+  const form = page.getByRole('dialog', { name: `Assignments for ${child}` });
   await expect(form.getByRole('checkbox', { name: template })).toHaveAccessibleDescription(activity);
   await form.getByRole('checkbox', { name: template }).check();
   await form.getByRole('button', { name: 'Save assignments' }).click();
@@ -101,7 +106,7 @@ test('creates a template and assigns it to an existing child through local D1', 
 
   const edit = page.getByRole('button', { name: `Edit ${template}, ${activity}` });
   await edit.click();
-  const detail = page.getByRole('region', { name: 'Template details' });
+  const detail = page.getByRole('dialog', { name: 'Template details' });
   await expect(detail.getByText(new RegExp(`Affected children.*${child}`))).toBeVisible();
   await detail.getByRole('button', { name: activity }).click();
   await detail.getByRole('button', { name: 'Remove activity' }).click();

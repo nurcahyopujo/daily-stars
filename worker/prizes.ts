@@ -35,7 +35,12 @@ export async function prizes(request: Request, db: D1Database, parent: Parent, t
       db.prepare('SELECT label,cost,actor FROM redemptions WHERE child_id=? AND id=?').bind(child,id),
     ]);
     const row = saved.results[0];
-    if (!row) throw new ApiError(422, 'UNAVAILABLE_BALANCE', 'Check the current balance and that this child is active.');
+    if (!row) {
+      const account = await balance.first<{ balance: number }>();
+      if (account && cost > account.balance)
+        throw new ApiError(422, 'INSUFFICIENT_BALANCE', 'Redemption rejected. Stars to spend exceed the available balance.');
+      throw new ApiError(422, 'UNAVAILABLE_BALANCE', 'Check that this child is active.');
+    }
     if (row.label !== label || row.cost !== cost || row.actor !== parent.sub) throw new ApiError(409, 'ACTION_REUSED', 'Redemption already exists.');
   }
   return json({ id });

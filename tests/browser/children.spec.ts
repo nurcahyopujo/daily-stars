@@ -169,8 +169,8 @@ test('creates with ordered initial templates, renames, and schedules archive fro
   await page.getByRole('button', { name: 'Add child', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Nickname', exact: true })).toBeFocused();
   await page.getByRole('textbox', { name: 'Nickname', exact: true }).fill('  Nova  ');
-  await page.getByLabel('Morning routine', { exact: true }).check();
-  await page.getByLabel('Evening routine', { exact: true }).check();
+  await page.getByRole('checkbox', { name: 'Morning routine', exact: true }).check();
+  await page.getByRole('checkbox', { name: 'Evening routine', exact: true }).check();
   await page.getByRole('button', { name: 'Move template 2 up' }).click();
   await page.getByRole('button', { name: 'Create child', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toContainText('Saved Nova. Starts at 0 points.');
@@ -204,9 +204,8 @@ test('separates child management from Home and uses keyboard-accessible add/edit
   await page.getByRole('button', { name: 'Cancel', exact: true }).focus();
   for (let index = 0; index < 8; index++) {
     await page.keyboard.press('Tab');
-    // Native dialogs may let Tab visit browser chrome, but never background page controls.
-    expect(await page.evaluate(() => document.activeElement === document.body
-      || document.querySelector('dialog')?.contains(document.activeElement))).toBe(true);
+    // Focus guards and browser chrome are allowed; background page controls are not.
+    expect(await page.evaluate(() => !document.querySelector('main')?.contains(document.activeElement))).toBe(true);
   }
   await page.getByRole('textbox', { name: 'Nickname', exact: true }).focus();
   await page.screenshot({ path: testInfo.outputPath('add-child-modal.png'), fullPage: true });
@@ -331,7 +330,7 @@ test('local development saves profiles to real local D1 and persists them across
   await navigate(page, 'Manage children');
   await page.getByRole('button', { name: 'Add child', exact: true }).click();
   await page.getByRole('textbox', { name: 'Nickname', exact: true }).fill(name);
-  await page.getByLabel('Morning routine', { exact: true }).check();
+  await page.getByRole('checkbox', { name: 'Morning routine', exact: true }).check();
   await page.getByRole('button', { name: 'Create child', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toContainText(`Saved ${name}.`);
   await page.reload();

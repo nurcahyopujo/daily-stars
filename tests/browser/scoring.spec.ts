@@ -13,7 +13,10 @@ test('parent records a zero outcome and a one-off award, then sees the running t
   expect(result.status()).toBe(201);
   await page.goto(origin + '/children');
   const row = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name, exact: true }) });
-  await row.getByRole('link', { name: 'Open today' }).click();
+  await expect(row.getByRole('link', { name, exact: true })).toHaveAccessibleDescription('View today →');
+  const card = await row.boundingBox();
+  expect(card).not.toBeNull();
+  await row.click({ position: { x: card!.width - 10, y: 10 } });
   const activity = page
     .locator('article')
     .filter({ has: page.getByRole('heading', { name: 'Make the bed' }) });

@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import type { Child } from '../../../shared/profiles';
 import { requestJson, RequestError } from './requests';
@@ -47,27 +50,29 @@ export function Prizes({ child }: { child: Child }) {
       } else setMessage('Save not confirmed. Keep this page open and check / retry.');
     } finally { setBusy(false); }
   }
+  const exceedsBalance = data !== null && Number(cost) > data.balance;
   return <section className="child-profiles score-day">
-    {!pending && <a href="/children">← Manage children</a>}
+    {!pending && <Link to="/children">← Manage children</Link>}
     <h1>{child.displayName} · Prizes</h1>
     {message && <p role="status">{message}</p>}
     {pending && <div role="alert"><p>Check the submitted redemption before continuing.</p>
-      <button disabled={busy} onClick={() => void send(pending)}>Check / retry</button></div>}
+      <Button disabled={busy} onClick={() => void send(pending)}>Check / retry</Button></div>}
     {!data && <p role="status">Loading balance…</p>}
-    <button disabled={busy} onClick={() => refresh(n => n + 1)}>Reload balance</button>
+    <Button disabled={busy} onClick={() => refresh(n => n + 1)}>Reload balance</Button>
     {data && <>
       <p>Available balance <Stars value={data.balance}/></p>
       <form className="child-profiles-editor" onSubmit={event => {
         event.preventDefault();
-        if (!pending && !busy) void send({ path: path + '/' + crypto.randomUUID(), method: 'PUT', body: { label: label.trim(), cost: Number(cost) } });
+        if (!pending && !busy && !exceedsBalance) void send({ path: path + '/' + crypto.randomUUID(), method: 'PUT', body: { label: label.trim(), cost: Number(cost) } });
       }}>
         <fieldset disabled={busy || Boolean(pending)}>
           <label htmlFor="prize-name">Prize name</label>
-          <input id="prize-name" required maxLength={160} value={label} onChange={event => setLabel(event.target.value)}/>
+          <Input id="prize-name" required maxLength={160} value={label} onChange={event => setLabel(event.target.value)}/>
           <label htmlFor="prize-cost">Stars to spend</label>
-          <input id="prize-cost" type="number" required min={1} max={Math.max(0, data.balance)} step={1} value={cost} onChange={event => setCost(event.target.value)}/>
-          {cost && <p>Balance after redemption <Stars value={data.balance - Number(cost)}/></p>}
-          <button type="submit" disabled={data.balance < 1 || !label.trim()}>Redeem</button>
+          <Input id="prize-cost" aria-invalid={exceedsBalance} aria-describedby={exceedsBalance ? 'prize-cost-error' : undefined} type="number" required min={1} max={Math.max(0, data.balance)} step={1} value={cost} onChange={event => setCost(event.target.value)}/>
+          {exceedsBalance && <p id="prize-cost-error" role="alert">Stars to spend exceed the available balance.</p>}
+          {cost && !exceedsBalance && <p>Balance after redemption <Stars value={data.balance - Number(cost)}/></p>}
+          <Button type="submit" disabled={data.balance < 1 || !label.trim() || exceedsBalance}>Redeem</Button>
         </fieldset>
       </form>
       <h2>Redemption history</h2>
@@ -75,7 +80,7 @@ export function Prizes({ child }: { child: Child }) {
       <ul className="child-profiles-list">{data.history.map(row => <li className="child-profiles-card" key={row.id}>
         <div><h3>{row.label}</h3><p>{row.cost} stars · {new Date(row.recorded).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' })} Jakarta</p>
           {row.voided && <p>Voided · Stars returned</p>}</div>
-        {!row.voided && <button disabled={busy || Boolean(pending)} onClick={() => void send({ path: path + '/' + row.id, method: 'PATCH', body: { void: true } })}>Void redemption</button>}
+        {!row.voided && <Button disabled={busy || Boolean(pending)} onClick={() => void send({ path: path + '/' + row.id, method: 'PATCH', body: { void: true } })}>Void redemption</Button>}
       </li>)}</ul>
     </>}
   </section>;

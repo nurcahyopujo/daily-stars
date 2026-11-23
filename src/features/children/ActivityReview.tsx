@@ -1,3 +1,7 @@
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption } from "@/components/ui/table";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Button } from "@/components/ui/button";
+import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import type { ActivityReviewData, DateRange, OutcomeCounts } from '../../../shared/activity-review';
 import type { Child } from '../../../shared/profiles';
@@ -62,14 +66,12 @@ function ActivityOutcomes({ activities }: { activities: ActivityReviewData['acti
   </>;
 }
 
-export function ActivityReview({ child, onSessionExpired }: { child: Child; onSessionExpired: () => void }) {
+export function ActivityReview({ child, date, onSessionExpired }: { child: Child; date?: string; onSessionExpired: () => void }) {
   const [period, setPeriod] = useState('7');
   const [data, setData] = useState<ActivityReviewData | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const periodControl = useRef<HTMLSelectElement>(null);
-  const day = new URLSearchParams(location.search).get('date');
-  const dayQuery = new URLSearchParams({ day: child.id, ...(day ? { date: day } : {}) });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -88,46 +90,49 @@ export function ActivityReview({ child, onSessionExpired }: { child: Child; onSe
 
   return (
     <section className="child-profiles activity-review" aria-labelledby="activity-review-title">
-      <a href={'/children?' + dayQuery}>← Back to day</a>
+      <Link to="/children/$childId/day" params={{ childId: child.id }} search={date ? { date } : {}}>← Back to day</Link>
       <h1 id="activity-review-title">{child.displayName}’s activity review</h1>
       <label htmlFor="activity-review-period">Review period</label>
-      <select id="activity-review-period" ref={periodControl} value={period} onChange={(event) => {
+      <NativeSelect id="activity-review-period" ref={periodControl} value={period} onChange={(event) => {
         setData(null);
         setError(false);
         setPeriod(event.target.value);
       }}>
-        <option value="7">Last 7 days</option>
-        <option value="28">Last 4 weeks</option>
-      </select>
+        <NativeSelectOption value="7">Last 7 days</NativeSelectOption>
+        <NativeSelectOption value="28">Last 4 weeks</NativeSelectOption>
+      </NativeSelect>
       {!data && !error && <p role="status">Loading activity review…</p>}
       {error && <div role="alert">
         <p>Couldn’t load the activity review. Check your connection and try again.</p>
-        <button type="button" onClick={() => {
+        <Button type="button" onClick={() => {
           periodControl.current?.focus();
           setError(false);
           setAttempt(attempt + 1);
-        }}>Reload review</button>
+        }}>Reload review</Button>
       </div>}
       {data && <>
         <p>Current period: <Dates range={data.current} /><br />Previous period: <Dates range={data.previous} /><br />Jakarta dates</p>
         <ActivityOutcomes activities={data.activities} />
-        <table>
-          <caption>Daily stars</caption>
-          <thead><tr>
-            <th scope="col">Date</th>
-            <th scope="col">Routine</th>
-            <th scope="col">One-off</th>
-            <th scope="col">Net</th>
-          </tr></thead>
-          <tbody>{data.dailyStars.map(({ date, routine, oneOff, net }) => (
-            <tr key={date}>
-              <th scope="row"><time dateTime={date}>{date}</time></th>
-              <td>{signed(routine)}</td>
-              <td>{signed(oneOff)}</td>
-              <td>{signed(net)}</td>
-            </tr>
-          ))}</tbody>
-        </table>
+        <p className="activity-review-scroll-hint">Scroll sideways to see all columns.</p>
+        <div className="activity-review-table" role="region" aria-label="Daily stars" tabIndex={0}>
+        <Table>
+          <TableCaption>Daily stars</TableCaption>
+          <TableHeader><TableRow>
+            <TableHead scope="col">Date</TableHead>
+            <TableHead scope="col">Routine</TableHead>
+            <TableHead scope="col">One-off</TableHead>
+            <TableHead scope="col">Net</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>{data.dailyStars.map(({ date, routine, oneOff, net }) => (
+            <TableRow key={date}>
+              <TableHead scope="row"><time dateTime={date}>{date}</time></TableHead>
+              <TableCell>{signed(routine)}</TableCell>
+              <TableCell>{signed(oneOff)}</TableCell>
+              <TableCell>{signed(net)}</TableCell>
+            </TableRow>
+          ))}</TableBody>
+        </Table>
+        </div>
       </>}
     </section>
   );

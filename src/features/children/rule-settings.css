@@ -2,13 +2,11 @@
 .rule-settings h2 { font-size: 18px; margin: 20px 0 8px; }
 .rule-settings .child-profiles-card button { margin-block: 8px 0; }
 .rule-editor {
-  margin-top: 20px;
   padding: clamp(12px, 4vw, 20px);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
 }
+.rule-editor h3 { font-size: 18px; }
 .rule-editor summary { cursor: pointer; padding-block: 8px; }
+.child-profiles .rule-editor [data-slot=collapsible-trigger] { background: transparent; color: var(--color-action); }
 .rule-editor label { margin-top: 12px; }
 .rule-activities { padding-left: 20px; }
 .rule-activities > li { padding-block: 8px; }

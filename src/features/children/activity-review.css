@@ -5,6 +5,7 @@
   overflow-wrap: anywhere;
 }
 .activity-review a { color: var(--color-action); }
+.activity-review > a { display: inline-flex; align-items: center; min-height: 44px; }
 .activity-review select {
   display: block;
   height: 44px;
@@ -22,6 +23,7 @@
 }
 .activity-review table {
   width: 100%;
+  min-width: 340px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -59,4 +61,13 @@
   list-style: none;
   font-size: 14px;
 }
-.activity-review table { margin-top: var(--space-medium); }
+.activity-review-table { margin-top: var(--space-medium); overflow-x: auto; }
+.activity-review-table:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.activity-review-scroll-hint { display: none; }
+@media (max-width: 400px) {
+  .activity-review .activity-review-scroll-hint { display: block; margin: 20px 0 0; }
+  .activity-review-table { margin-top: var(--space-small); }
+}
+@media (max-width: 340px) {
+  .activity-review-periods { grid-template-columns: 1fr; gap: 16px; }
+}

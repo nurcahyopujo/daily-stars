@@ -1,3 +1,9 @@
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import type { Child } from '../../../shared/profiles';
 import type { Day, Score } from '../../../shared/scoring';
@@ -28,12 +34,13 @@ export function Stars({
   );
 }
 
-export function ScoreDay({ child, today }: { child: Child; today: string }) {
+export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
+  child: Child; today: string; date?: string; onDateChange: (date: string) => void;
+}) {
   const last =
     child.archiveEffectiveDate && child.archiveEffectiveDate <= today
       ? new Date(Date.parse(child.archiveEffectiveDate + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10)
       : today;
-  const selectedDate = new URLSearchParams(location.search).get('date');
   const [date, setDate] = useState(
     outstanding.get(child.id)?.path.split('/days/')[1]?.slice(0, 10) ??
       (selectedDate && selectedDate >= child.startDate && selectedDate <= last ? selectedDate : last),
@@ -48,6 +55,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Score | null>(null);
   const path = '/api/children/' + encodeURIComponent(child.id) + '/days/' + date;
   useEffect(() => {
     const controller = new AbortController();
@@ -100,17 +108,17 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
     const entries = data!.history.filter((row) => row.stream === stream);
     return (
       entries.length > 0 && (
-        <details>
-          <summary>History</summary>
-          <ol>
+        <Collapsible>
+          <CollapsibleTrigger>History</CollapsibleTrigger>
+          <CollapsibleContent><ol>
             {entries.map((r) => (
               <li key={r.revision}>
                 {r.outcome.replaceAll('_', ' ')} · {r.points} stars {r.reason} · {r.actor} ·{' '}
                 {new Date(r.recorded).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' })} Jakarta
               </li>
             ))}
-          </ol>
-        </details>
+          </ol></CollapsibleContent>
+        </Collapsible>
       )
     );
   }
@@ -119,16 +127,18 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
     if ((latest.get(row.stream)?.revision ?? 0) < row.revision) latest.set(row.stream, row);
   const current = conflict && latest.get(conflict.path.slice(path.length + 1));
   return (
-    <section className="child-profiles score-day">
-      {!pending && <a href="/children">← Manage children</a>}
+    <section className="child-profiles score-day scoring-day">
+      {!pending && <Link to="/children">← Manage children</Link>}
       <h1>{child.displayName}</h1>
-      {!pending && <a href={'/children?prizes=' + encodeURIComponent(child.id)}>Prizes</a>}
-      {!pending && !draft && !conflict && (
-        <a href={'/children?' + new URLSearchParams({ review: child.id, date })}>Activity review</a>
+      {!pending && (
+        <nav className="scoring-day-links" aria-label="Child pages">
+          <Link to="/children/$childId/prizes" params={{ childId: child.id }}>Prizes</Link>
+          {!draft && !conflict && <Link to="/children/$childId/review" params={{ childId: child.id }} search={{ date }}>Activity review</Link>}
+        </nav>
       )}
       <label>
         Activity date{' '}
-        <input
+        <Input
           type="date"
           value={date}
           min={child.startDate}
@@ -138,9 +148,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
             if (e.target.validity.valid && e.target.value) {
               setError('');
               setData(null);
-              const url = new URL(location.href);
-              url.searchParams.set('date', e.target.value);
-              window.history.replaceState(null, '', url);
+              onDateChange(e.target.value);
               setDate(e.target.value);
             }
           }}
@@ -166,16 +174,16 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                 : String(conflict.body.points) + ' stars · ' + conflict.body.reason}
           </p>
           <div className="score-actions">
-            <button
+            <Button
               onClick={() => {
                 setConflict(null);
                 setError('');
               }}
             >
               Keep current
-            </button>
+            </Button>
             {current.outcome !== 'void' && (
-              <button
+              <Button
                 onClick={() => {
                   setConflict(null);
                   void send({
@@ -186,7 +194,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                 }}
               >
                 Apply my change
-              </button>
+              </Button>
             )}
           </div>
         </article>
@@ -195,25 +203,25 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
         <p role="alert">
           {error}{' '}
           {pending ? (
-            <button disabled={busy} onClick={() => void send(pending)}>
+            <Button disabled={busy} onClick={() => void send(pending)}>
               Check / retry
-            </button>
+            </Button>
           ) : (
             !data && (
-              <button
+              <Button
                 onClick={() => {
                   setError('');
                   refresh((n) => n + 1);
                 }}
               >
                 Reload
-              </button>
+              </Button>
             )
           )}
         </p>
       )}
       {!data && pending && !error && !busy && (
-        <button onClick={() => void send(pending)}>Check / retry</button>
+        <Button onClick={() => void send(pending)}>Check / retry</Button>
       )}
       {!data && !error && <p role="status">Loading day…</p>}
       {data && (
@@ -226,7 +234,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
               <Stars value={data.balance ?? data.total} /> balance
             </span>
           </p>
-          <fieldset disabled={!!pending || !!draft || !!conflict}>
+          <fieldset className="scoring-day-entries" disabled={!!pending || !!draft || !!conflict}>
             <h2>Activities</h2>
             {!data.activities.length && <p>No activities scheduled.</p>}
             {data.activities.map((a) => {
@@ -249,28 +257,28 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                       </>
                     )}
                   </p>
-                  <div className="score-actions">
+                  <div className="score-actions scoring-day-outcomes">
                     {[
                       ['done_correctly', 'Done correctly', a.reward],
                       ['needs_improvement', 'Needs improvement', -(a.penalty ?? 0)],
                     ].map(([outcome, label, amount]) => (
-                      <button
+                      <Button
                         key={outcome}
                         aria-pressed={r?.outcome === outcome}
                         onClick={() => save('PUT', a.stream, { expectedRevision: r?.revision ?? 0, outcome })}
                       >
                         {label} ({Number(amount) > 0 ? '+' : ''}
                         {amount})
-                      </button>
+                      </Button>
                     ))}
                     {r && r.outcome !== 'unrecorded' && (
-                      <button
+                      <Button
                         onClick={() =>
                           save('PUT', a.stream, { expectedRevision: r.revision, outcome: 'unrecorded' })
                         }
                       >
                         Reset
-                      </button>
+                      </Button>
                     )}
                   </div>
                   {history(a.stream)}
@@ -280,9 +288,9 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
             <h2>One-off entries</h2>
             <div className="score-actions">
               {[1, -1].map((sign) => (
-                <button key={sign} onClick={() => setDraft({ sign, amount: '', reason: '' })}>
+                <Button key={sign} onClick={() => setDraft({ sign, amount: '', reason: '' })}>
                   {sign === 1 ? 'Add stars' : 'Deduct stars'}
-                </button>
+                </Button>
               ))}
             </div>
             {[...latest.values()]
@@ -296,7 +304,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                   </p>
                   {r.outcome !== 'void' && (
                     <div className="score-actions">
-                      <button
+                      <Button
                         onClick={() =>
                           setDraft({
                             stream: r.stream,
@@ -308,31 +316,31 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                         }
                       >
                         Edit entry
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              'Void “' +
-                                r.reason +
-                                '” for ' +
-                                child.displayName +
-                                ' on ' +
-                                date +
-                                '? This is final.',
-                            )
-                          )
-                            save('PATCH', r.stream, { expectedRevision: r.revision, void: true });
-                        }}
-                      >
+                      </Button>
+                      <Button onClick={() => setVoidTarget(r)}>
                         Void entry
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {history(r.stream)}
                 </article>
               ))}
           </fieldset>
+          <AlertDialog open={voidTarget !== null} onOpenChange={(open) => { if (!open) setVoidTarget(null); }}>
+            <AlertDialogContent className="child-profiles child-profiles-modal void-confirmation">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Void entry?</AlertDialogTitle>
+                <AlertDialogDescription>Void “{voidTarget?.reason}” for {child.displayName} on {date}? This is final.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                  if (voidTarget) save('PATCH', voidTarget.stream, { expectedRevision: voidTarget.revision, void: true });
+                  setVoidTarget(null);
+                }}>Void entry</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           {draft && (
             <form
               onSubmit={(e) => {
@@ -360,17 +368,17 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                   <>
                     <label>
                       Entry type{' '}
-                      <select
+                      <NativeSelect
                         value={draft.sign}
                         onChange={(e) => setDraft({ ...draft, sign: Number(e.target.value) })}
                       >
-                        <option value={1}>Award</option>
-                        <option value={-1}>Deduction</option>
-                      </select>
+                        <NativeSelectOption value={1}>Award</NativeSelectOption>
+                        <NativeSelectOption value={-1}>Deduction</NativeSelectOption>
+                      </NativeSelect>
                     </label>
                     <label>
                       Stars{' '}
-                      <input
+                      <Input
                         autoFocus
                         required
                         type="number"
@@ -382,7 +390,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                     </label>
                     <label>
                       Reason{' '}
-                      <input
+                      <Input
                         required
                         maxLength={160}
                         value={draft.reason}
@@ -392,8 +400,8 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                   </>
                 )}
                 <div className="score-actions">
-                  <button disabled={!draft.reason.trim()}>{confirm ? 'Confirm' : 'Review entry'}</button>
-                  <button
+                  <Button type="submit" disabled={!draft.reason.trim()}>{confirm ? 'Confirm' : 'Review entry'}</Button>
+                  <Button
                     type="button"
                     onClick={() => {
                       if (confirm) setConfirm(false);
@@ -401,7 +409,7 @@ export function ScoreDay({ child, today }: { child: Child; today: string }) {
                     }}
                   >
                     {confirm ? 'Back' : 'Cancel'}
-                  </button>
+                  </Button>
                 </div>
               </fieldset>
             </form>

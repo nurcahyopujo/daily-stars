@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Child, TemplateSummary } from '../../../shared/profiles';
 import { requestJson, RequestError } from './requests';
 
-type Profiles = { today: string; children: (Child & { total?: number })[] };
+type Profiles = { today: string; children: (Child & { total?: number; balance?: number; todayPoints?: number })[] };
 
 export function useHouseholdProfiles(onSessionExpired: () => void) {
   const [data, setData] = useState<Profiles | null>(null);

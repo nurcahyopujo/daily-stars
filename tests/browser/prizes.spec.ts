@@ -12,9 +12,17 @@ test('parent redeems a prize and voids it to restore the balance', async ({ page
     headers: { Origin: origin, 'Idempotency-Key': crypto.randomUUID() },
     data: { points: 10, reason: 'Award' },
   });
-  await page.goto(origin + '/children?prizes=' + child.id);
+  await page.goto(origin + '/children');
+  const card = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: child.displayName, exact: true }) });
+  await expect(card.getByRole('link', { name: 'Prizes' })).toHaveCount(0);
+  await card.getByRole('link', { name: child.displayName, exact: true }).click();
+  await page.getByRole('link', { name: 'Prizes', exact: true }).click();
   await expect(page.getByLabel('10 stars', { exact: true })).toBeVisible();
   await page.getByLabel('Prize name', { exact: true }).fill('Choose a movie');
+  await page.getByLabel('Stars to spend').fill('11');
+  await expect(page.getByRole('alert')).toHaveText('Stars to spend exceed the available balance.');
+  await expect(page.getByRole('button', { name: 'Redeem', exact: true })).toBeDisabled();
+  await page.screenshot({ path: info.outputPath('over-balance.png'), fullPage: true });
   await page.getByLabel('Stars to spend').fill('7');
   await expect(page.getByText('Balance after redemption')).toContainText('3');
   await page.getByRole('button', { name: 'Redeem', exact: true }).click();
