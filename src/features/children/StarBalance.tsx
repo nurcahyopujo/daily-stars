@@ -71,8 +71,10 @@ export function StarBalance({ balance, today }: { balance: number; today?: numbe
           {!reduce && <span className="star-balance-glints" aria-hidden="true"><i /><i /><i /></span>}
         </span>
         <span className="star-balance-figure">
-          <span className="star-balance-value">{shown}</span>
-          <span className="star-balance-label">stars to spend</span>
+          <span className="star-balance-value" aria-label={`${balance} stars`}>
+            <span aria-hidden="true">{shown}</span>
+          </span>
+          <span className="star-balance-label" aria-hidden="true">stars to spend</span>
         </span>
       </p>
       {today !== undefined && (

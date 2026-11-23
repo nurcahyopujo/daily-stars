@@ -214,9 +214,9 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
       if (!open && !locked) { setTarget(null); clearRuleSave(); }
     }}>
     <DialogContent showCloseButton={false} className="child-profiles rule-settings child-profiles-modal rule-editor" aria-labelledby="rule-editor-title" aria-describedby={undefined}>
-    {!target && <h3 id="rule-editor-title">Recover rule save</h3>}
+    {!target && <h3 className="modal-title" id="rule-editor-title">Recover rule save</h3>}
     {target && <>
-      <h3 ref={heading} tabIndex={-1} id="rule-editor-title">
+      <h3 className="modal-title" ref={heading} tabIndex={-1} id="rule-editor-title">
         {target.kind === 'create' ? 'Create template' : target.kind === 'assignment' ? `Assignments for ${target.child.displayName}` : 'Template details'}
       </h3>
       {loadError ? <div role="alert"><p>{loadError}</p><Button type="button" onClick={() => open(target)}>Try again</Button></div>
@@ -306,9 +306,9 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
         </fieldset>
         {validation && <p role="alert">{validation}</p>}
       </form>}
-      <div className="child-profiles-actions">
-        {draft?.kind === 'template' && draft.retire && !locked && !conflict && <Button type="button" onClick={() => setDraft({ ...draft, retire: false })}>Keep editing</Button>}
-        <Button type="button" disabled={locked} onClick={() => {
+      <div className="child-profiles-actions modal-footer">
+        {draft?.kind === 'template' && draft.retire && !locked && !conflict && <Button type="button" className="modal-cancel" onClick={() => setDraft({ ...draft, retire: false })}>Keep editing</Button>}
+        <Button type="button" className="modal-cancel" disabled={locked} onClick={() => {
           setTarget(null); clearRuleSave();
         }}>{retired ? 'Close' : 'Cancel'}</Button>
       </div>
@@ -326,7 +326,7 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
           : draft.retire ? 'Retire template' : draft.activities.map(activity => `${activity.label} (+${activity.reward})`).join(', ')}</p>}
         <Button type="button" onClick={() => submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
       </div>}
-      {target && <Button type="button" onClick={() => { void reload(); open(target); }}>{conflict ? 'Keep current' : 'Reload latest rules'}</Button>}
+      {target && <Button type="button" className="modal-cancel" onClick={() => { void reload(); open(target); }}>{conflict ? 'Keep current' : 'Reload latest rules'}</Button>}
     </div>}
     {save.status === 'uncertain' && <div role="alert">
       <p>Save not confirmed for {save.intent.label}. Keep this page open to retain the retry key.</p>

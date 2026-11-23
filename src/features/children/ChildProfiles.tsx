@@ -109,7 +109,7 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
       if (!open && !locked) { setEditor(null); clearChildSave(); }
     }}>
     <DialogContent showCloseButton={false} className="child-profiles child-profiles-modal" aria-labelledby="child-editor-title" aria-describedby={undefined}>
-    <h3 id="child-editor-title">{editor ? (editor.child ? `Manage ${editor.child.displayName}` : 'Add child') : 'Recover child save'}</h3>
+    <h3 className="modal-title" id="child-editor-title">{editor ? (editor.child ? `Manage ${editor.child.displayName}` : 'Add child') : 'Recover child save'}</h3>
     {editor && <form className="child-profiles-editor" onSubmit={(event) => {
       event.preventDefault();
       if (locked) return;
@@ -138,9 +138,9 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
           <span>Archive from {archiveDate} (tomorrow). Keep all history and earlier corrections.</span>
         </label>}
         {editor.child?.archiveEffectiveDate && <p>Archive date: {editor.child.archiveEffectiveDate}. Earlier entries remain preserved.</p>}
-        <div className="child-profiles-actions">
+        <div className="child-profiles-actions modal-footer">
+          <Button type="button" className="modal-cancel" onClick={() => { setEditor(null); clearChildSave(); }}>Cancel</Button>
           <Button type="submit" disabled={Boolean(editor.child && editor.name.trim() === editor.child.displayName && !editor.archive)}>{editor.child ? 'Save changes' : 'Create child'}</Button>
-          <Button type="button" onClick={() => { setEditor(null); clearChildSave(); }}>Cancel</Button>
         </div>
       </fieldset>
     </form>}
@@ -158,8 +158,8 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
         <h3>This profile changed</h3>
         <p>Current: {save.current.displayName} · revision {save.current.revision}{save.current.archiveEffectiveDate ? ` · archives from ${save.current.archiveEffectiveDate}` : ' · not archived'}.</p>
         <p>Your change: {save.intent.displayName ?? save.current.displayName}{save.intent.kind === 'edit' && save.intent.archive ? ' · archive from tomorrow' : ''}.</p>
-        <div className="child-profiles-actions">
-          <Button type="button" onClick={() => {
+        <div className="child-profiles-actions modal-footer">
+          <Button type="button" className="modal-cancel" onClick={() => {
             setEditor({ child: save.current, name: save.current.displayName, templates: [], archive: false });
             clearChildSave(); void load(); nickname.current?.focus();
           }}>Keep current</Button>

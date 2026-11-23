@@ -6,18 +6,26 @@
 }
 .rule-editor h3 { font-size: 18px; }
 .rule-editor summary { cursor: pointer; padding-block: 8px; }
-.child-profiles .rule-editor [data-slot=collapsible-trigger] { background: transparent; color: var(--color-action); }
+/* `.child-profiles` and `.rule-editor` sit on the SAME portaled modal element,
+   so these must be compound (no descendant space) to beat the blanket green. */
+.child-profiles.rule-editor [data-slot=collapsible-trigger] { background: transparent; color: var(--color-action); font-weight: 600; }
+.child-profiles.rule-editor [data-slot=collapsible-trigger]:not(:disabled):hover { background: transparent; filter: none; text-decoration: underline; text-underline-offset: 3px; }
 .rule-editor label { margin-top: 12px; }
 .rule-activities { padding-left: 20px; }
 .rule-activities > li { padding-block: 8px; }
-.rule-activities .rule-activity-toggle { text-align: left; background: transparent; color: var(--color-action); }
+.child-profiles.rule-editor .rule-activity-toggle { text-align: left; background: transparent; color: var(--color-action); }
+.child-profiles.rule-editor .rule-activity-toggle:not(:disabled):hover { background: transparent; filter: none; text-decoration: underline; text-underline-offset: 3px; }
 .rule-editor .rule-weekdays { display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 16px; }
 .rule-editor .rule-weekdays label { align-items: center; min-height: 44px; margin: 0; }
-.child-profiles .rule-editor button[type=button] {
+/* Secondary actions read as quiet outline buttons; only the Save submit stays green. */
+.child-profiles.rule-editor button[type=button]:not(.modal-cancel) {
   background: transparent;
+  border: 1px solid var(--color-field-border);
   color: var(--color-action);
+  font-weight: 600;
 }
-.child-profiles .rule-editor button[type=button]:not(:disabled):hover {
+.child-profiles.rule-editor button[type=button]:not(.modal-cancel):not(:disabled):hover {
   background: var(--color-action-soft);
+  filter: none;
 }
 .rule-editor .child-profiles-order li > span { display: block; margin-bottom: var(--space-small); }

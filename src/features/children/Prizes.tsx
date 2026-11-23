@@ -51,17 +51,23 @@ export function Prizes({ child }: { child: Child }) {
     } finally { setBusy(false); }
   }
   const exceedsBalance = data !== null && Number(cost) > data.balance;
-  return <section className="child-profiles score-day">
-    {!pending && <Link to="/children">← Manage children</Link>}
-    <h1>{child.displayName} · Prizes</h1>
-    {message && <p role="status">{message}</p>}
+  return <section className="child-profiles score-day prizes-page">
+    {!pending && <Link className="scoring-day-back" to="/children">← Manage children</Link>}
+    <header className="scoring-day-head"><h1>{child.displayName} · Prizes</h1></header>
+    {message && <p role="status" className="prizes-message">{message}</p>}
     {pending && <div role="alert"><p>Check the submitted redemption before continuing.</p>
       <Button disabled={busy} onClick={() => void send(pending)}>Check / retry</Button></div>}
     {!data && <p role="status">Loading balance…</p>}
-    <Button disabled={busy} onClick={() => refresh(n => n + 1)}>Reload balance</Button>
+    {data && <div className="prizes-balance">
+      <div className="prizes-balance-figure">
+        <span className="prizes-balance-label">Available balance</span>
+        <span className="prizes-balance-value"><Stars value={data.balance}/></span>
+      </div>
+      <Button className="prizes-reload" disabled={busy} onClick={() => refresh(n => n + 1)}>Reload</Button>
+    </div>}
+    {!data && <Button className="prizes-reload" disabled={busy} onClick={() => refresh(n => n + 1)}>Reload balance</Button>}
     {data && <>
-      <p>Available balance <Stars value={data.balance}/></p>
-      <form className="child-profiles-editor" onSubmit={event => {
+      <form className="child-profiles-editor prizes-form" onSubmit={event => {
         event.preventDefault();
         if (!pending && !busy && !exceedsBalance) void send({ path: path + '/' + crypto.randomUUID(), method: 'PUT', body: { label: label.trim(), cost: Number(cost) } });
       }}>
@@ -75,12 +81,12 @@ export function Prizes({ child }: { child: Child }) {
           <Button type="submit" disabled={data.balance < 1 || !label.trim() || exceedsBalance}>Redeem</Button>
         </fieldset>
       </form>
-      <h2>Redemption history</h2>
-      {!data.history.length && <p>No prizes redeemed yet.</p>}
-      <ul className="child-profiles-list">{data.history.map(row => <li className="child-profiles-card" key={row.id}>
+      <h2 className="prizes-history-title">Redemption history</h2>
+      {!data.history.length && <p className="prizes-empty">No prizes redeemed yet.</p>}
+      <ul className="child-profiles-list prizes-history">{data.history.map(row => <li className={`child-profiles-card prizes-history-row${row.voided ? ' is-voided' : ''}`} key={row.id}>
         <div><h3>{row.label}</h3><p>{row.cost} stars · {new Date(row.recorded).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' })} Jakarta</p>
-          {row.voided && <p>Voided · Stars returned</p>}</div>
-        {!row.voided && <Button disabled={busy || Boolean(pending)} onClick={() => void send({ path: path + '/' + row.id, method: 'PATCH', body: { void: true } })}>Void redemption</Button>}
+          {row.voided && <p className="prizes-voided-note">Voided · Stars returned</p>}</div>
+        {!row.voided && <Button className="prizes-void" disabled={busy || Boolean(pending)} onClick={() => void send({ path: path + '/' + row.id, method: 'PATCH', body: { void: true } })}>Void redemption</Button>}
       </li>)}</ul>
     </>}
   </section>;

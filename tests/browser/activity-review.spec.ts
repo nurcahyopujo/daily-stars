@@ -179,7 +179,9 @@ test('parent compares recorded outcomes using the assignments, schedules, and ac
 test('parent sees dated routine points, corrected and voided awards, and a reset outcome', async ({ page }, info) => {
   const { name, morningName, routineDate, previousScoreDate } = await seedReviewHistory();
   await openDay(page, name);
-  await page.getByLabel('Activity date', { exact: true }).fill(routineDate);
+  // The activity date is chosen through the shadcn date-picker popover.
+  await page.getByRole('button', { name: /Activity date/ }).click();
+  await page.getByRole('gridcell', { name: 'Friday, 6 November 2026', exact: true }).click();
   const routine = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Make the bed', exact: true }) });
   await expect(routine.getByText('Done correctly', { exact: false }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Add stars', exact: true }).click();
@@ -202,7 +204,7 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await expect(cellsOn(previousScoreDate)).toHaveText(['+1', '0', '+1']);
 
   await page.getByRole('link', { name: /Back to day/ }).click();
-  await expect(page.getByLabel('Activity date', { exact: true })).toHaveValue(routineDate);
+  await expect(page.getByRole('button', { name: /Activity date/ })).toHaveAccessibleName(/6 Nov 2026/);
   await oneOff.getByRole('button', { name: 'Edit entry' }).click();
   await page.getByRole('combobox', { name: 'Entry type' }).selectOption({ label: 'Deduction' });
   await page.getByRole('spinbutton', { name: 'Stars', exact: true }).fill('3');

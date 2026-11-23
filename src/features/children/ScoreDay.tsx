@@ -1,8 +1,11 @@
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { DatePicker } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HistoryIcon } from "lucide-react";
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import type { Child } from '../../../shared/profiles';
@@ -128,35 +131,38 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
   const current = conflict && latest.get(conflict.path.slice(path.length + 1));
   return (
     <section className="child-profiles score-day scoring-day">
-      {!pending && <Link to="/children">← Manage children</Link>}
-      <h1>{child.displayName}</h1>
-      {!pending && (
-        <nav className="scoring-day-links" aria-label="Child pages">
-          <Link to="/children/$childId/prizes" params={{ childId: child.id }}>Prizes</Link>
-          {!draft && !conflict && <Link to="/children/$childId/review" params={{ childId: child.id }} search={{ date }}>Activity review</Link>}
-        </nav>
-      )}
-      <label>
-        Activity date{' '}
-        <Input
-          type="date"
+      {!pending && <Link className="scoring-day-back" to="/children">← Manage children</Link>}
+      <header className="scoring-day-head">
+        <h1>{child.displayName}</h1>
+        {!pending && (
+          <nav className="scoring-day-links" aria-label="Child pages">
+            <Link to="/children/$childId/prizes" params={{ childId: child.id }}>Prizes</Link>
+            {!draft && !conflict && <Link to="/children/$childId/review" params={{ childId: child.id }} search={{ date }}>Activity review</Link>}
+          </nav>
+        )}
+      </header>
+      <div className="scoring-day-field">
+        <span id="activity-date-label" className="scoring-day-field-label">Activity date</span>
+        <DatePicker
+          aria-labelledby="activity-date-label activity-date-value"
+          valueId="activity-date-value"
           value={date}
           min={child.startDate}
           max={last}
+          today={today}
           disabled={!!pending || !!draft || !!conflict}
-          onChange={(e) => {
-            if (e.target.validity.valid && e.target.value) {
-              setError('');
-              setData(null);
-              onDateChange(e.target.value);
-              setDate(e.target.value);
-            }
+          onSelect={(next) => {
+            setError('');
+            setData(null);
+            onDateChange(next);
+            setDate(next);
           }}
         />
-      </label>
+      </div>
       {date !== today && (
-        <p>
-          <strong>Editing a past date</strong>
+        <p className="scoring-day-pastnote" role="note">
+          <HistoryIcon aria-hidden="true" size={16} />
+          <span><strong>Editing a past date.</strong> Changes apply to this day only.</span>
         </p>
       )}
       {conflict && current && (
@@ -199,7 +205,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
           </div>
         </article>
       )}
-      {error && (!conflict || !current) && (
+      {error && !draft && (!conflict || !current) && (
         <p role="alert">
           {error}{' '}
           {pending ? (
@@ -239,12 +245,20 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
             {!data.activities.length && <p>No activities scheduled.</p>}
             {data.activities.map((a) => {
               const r = latest.get(a.stream);
+              const recorded = r && r.outcome !== 'unrecorded';
+              const statusTone = !recorded
+                ? 'is-pending'
+                : r!.outcome === 'done_correctly'
+                  ? 'is-done'
+                  : 'is-needs';
               return (
-                <article key={a.stream}>
-                  <small>{a.template}</small>
-                  <h3>{a.label}</h3>
-                  <p>
-                    {!r || r.outcome === 'unrecorded' ? (
+                <article key={a.stream} className="scoring-day-entry">
+                  <div className="scoring-day-entry-head">
+                    <h3>{a.label}</h3>
+                    <span className="scoring-day-tag">{a.template}</span>
+                  </div>
+                  <p className={`scoring-day-status ${statusTone}`}>
+                    {!recorded ? (
                       date === today ? (
                         'Pending'
                       ) : (
@@ -252,8 +266,8 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
                       )
                     ) : (
                       <>
-                        <Stars small value={r.points} /> ·{' '}
-                        {r.outcome === 'done_correctly' ? 'Done correctly' : 'Needs improvement'}
+                        <Stars small value={r!.points} /> ·{' '}
+                        {r!.outcome === 'done_correctly' ? 'Done correctly' : 'Needs improvement'}
                       </>
                     )}
                   </p>
@@ -296,9 +310,11 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
             {[...latest.values()]
               .filter((r) => r.stream.startsWith('one-offs/'))
               .map((r) => (
-                <article key={r.stream}>
-                  <h3>{r.reason}</h3>
-                  <p>
+                <article key={r.stream} className="scoring-day-entry">
+                  <div className="scoring-day-entry-head">
+                    <h3>{r.reason}</h3>
+                  </div>
+                  <p className={`scoring-day-status ${r.outcome === 'void' ? 'is-void' : r.points > 0 ? 'is-done' : 'is-needs'}`}>
                     <Stars small value={r.points} /> ·{' '}
                     {r.outcome === 'void' ? 'Voided' : r.points > 0 ? 'Award' : 'Deduction'}
                   </p>
@@ -327,13 +343,13 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
               ))}
           </fieldset>
           <AlertDialog open={voidTarget !== null} onOpenChange={(open) => { if (!open) setVoidTarget(null); }}>
-            <AlertDialogContent className="child-profiles child-profiles-modal void-confirmation">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Void entry?</AlertDialogTitle>
-                <AlertDialogDescription>Void “{voidTarget?.reason}” for {child.displayName} on {date}? This is final.</AlertDialogDescription>
+            <AlertDialogContent className="child-profiles child-profiles-modal modal-standard void-confirmation">
+              <AlertDialogHeader className="modal-head">
+                <AlertDialogTitle className="modal-title">Void entry?</AlertDialogTitle>
+                <AlertDialogDescription className="modal-sub">Void “{voidTarget?.reason}” for {child.displayName} on {date}? This is final.</AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogFooter className="modal-footer">
+                <AlertDialogCancel className="modal-cancel">Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={() => {
                   if (voidTarget) save('PATCH', voidTarget.stream, { expectedRevision: voidTarget.revision, void: true });
                   setVoidTarget(null);
@@ -341,80 +357,116 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          {draft && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!confirm) {
-                  setConfirm(true);
-                  return;
-                }
-                save(draft.stream ? 'PATCH' : 'POST', draft.stream ?? 'one-offs', {
-                  points: draft.sign * Number(draft.amount),
-                  reason: draft.reason.trim(),
-                  ...(draft.stream ? { expectedRevision: draft.revision } : {}),
-                });
-              }}
+          <Dialog
+            open={!!draft}
+            onOpenChange={(open) => {
+              if (!open && !pending && !busy) {
+                setDraft(null);
+                setConfirm(false);
+              }
+            }}
+          >
+            <DialogContent
+              showCloseButton={false}
+              className="child-profiles child-profiles-modal modal-standard oneoff-modal"
             >
-              <fieldset disabled={!!pending}>
-                <h2>{draft.stream ? 'Correct entry' : 'One-off entry'}</h2>
-                {confirm ? (
-                  <p>
-                    {draft.sign === 1 ? 'Award' : 'Deduct'} {draft.amount} stars{' '}
-                    {draft.sign === 1 ? 'to' : 'from'} {child.displayName} for {date}?<br />
-                    {draft.reason}
-                  </p>
-                ) : (
-                  <>
-                    <label>
-                      Entry type{' '}
-                      <NativeSelect
-                        value={draft.sign}
-                        onChange={(e) => setDraft({ ...draft, sign: Number(e.target.value) })}
+              {draft && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!confirm) {
+                      setConfirm(true);
+                      return;
+                    }
+                    save(draft.stream ? 'PATCH' : 'POST', draft.stream ?? 'one-offs', {
+                      points: draft.sign * Number(draft.amount),
+                      reason: draft.reason.trim(),
+                      ...(draft.stream ? { expectedRevision: draft.revision } : {}),
+                    });
+                  }}
+                >
+                  <fieldset disabled={!!pending}>
+                    <DialogHeader className="modal-head">
+                      <DialogTitle className="modal-title">
+                        {draft.stream ? 'Correct entry' : draft.sign === 1 ? 'Add stars' : 'Deduct stars'}
+                      </DialogTitle>
+                      <DialogDescription className="modal-sub">
+                        {confirm
+                          ? 'Check the details before saving.'
+                          : `For ${child.displayName} on ${date}.`}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="modal-body">
+                      {confirm ? (
+                        <p className="oneoff-review">
+                          <span className="oneoff-review-amount">
+                            <Stars small value={draft.sign * Number(draft.amount || 0)} />
+                          </span>
+                          {draft.sign === 1 ? 'Award' : 'Deduct'} {draft.amount} stars{' '}
+                          {draft.sign === 1 ? 'to' : 'from'} {child.displayName} for {date}.
+                          <span className="oneoff-review-reason">{draft.reason}</span>
+                        </p>
+                      ) : (
+                        <>
+                          <label>
+                            Entry type{' '}
+                            <NativeSelect
+                              className="w-full"
+                              value={draft.sign}
+                              onChange={(e) => setDraft({ ...draft, sign: Number(e.target.value) })}
+                            >
+                              <NativeSelectOption value={1}>Award</NativeSelectOption>
+                              <NativeSelectOption value={-1}>Deduction</NativeSelectOption>
+                            </NativeSelect>
+                          </label>
+                          <label>
+                            Stars{' '}
+                            <Input
+                              autoFocus
+                              required
+                              type="number"
+                              min="1"
+                              max="999"
+                              value={draft.amount}
+                              onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
+                            />
+                          </label>
+                          <label>
+                            Reason{' '}
+                            <Input
+                              required
+                              maxLength={160}
+                              value={draft.reason}
+                              onChange={(e) => setDraft({ ...draft, reason: e.target.value })}
+                            />
+                          </label>
+                        </>
+                      )}
+                      {error && <p role="alert" className="modal-error">{error}</p>}
+                      {busy && <p role="status" className="modal-saving">Saving…</p>}
+                    </div>
+                    <footer className="modal-footer">
+                      <Button
+                        type="button"
+                        className="modal-cancel"
+                        disabled={busy}
+                        onClick={() => {
+                          if (confirm) setConfirm(false);
+                          else setDraft(null);
+                        }}
                       >
-                        <NativeSelectOption value={1}>Award</NativeSelectOption>
-                        <NativeSelectOption value={-1}>Deduction</NativeSelectOption>
-                      </NativeSelect>
-                    </label>
-                    <label>
-                      Stars{' '}
-                      <Input
-                        autoFocus
-                        required
-                        type="number"
-                        min="1"
-                        max="999"
-                        value={draft.amount}
-                        onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
-                      />
-                    </label>
-                    <label>
-                      Reason{' '}
-                      <Input
-                        required
-                        maxLength={160}
-                        value={draft.reason}
-                        onChange={(e) => setDraft({ ...draft, reason: e.target.value })}
-                      />
-                    </label>
-                  </>
-                )}
-                <div className="score-actions">
-                  <Button type="submit" disabled={!draft.reason.trim()}>{confirm ? 'Confirm' : 'Review entry'}</Button>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (confirm) setConfirm(false);
-                      else setDraft(null);
-                    }}
-                  >
-                    {confirm ? 'Back' : 'Cancel'}
-                  </Button>
-                </div>
-              </fieldset>
-            </form>
-          )}
-          {busy && <p role="status">Saving…</p>}
+                        {confirm ? 'Back' : 'Cancel'}
+                      </Button>
+                      <Button type="submit" disabled={!draft.reason.trim() || busy}>
+                        {confirm ? 'Confirm' : 'Review entry'}
+                      </Button>
+                    </footer>
+                  </fieldset>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
+          {busy && !draft && <p role="status">Saving…</p>}
         </>
       )}
     </section>
