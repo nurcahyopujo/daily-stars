@@ -251,7 +251,6 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
     if (optimistic) setData((prev) => (prev ? optimistic(prev) : prev));
     const atPath = pathRef.current;
     setBusy(true);
-    setPending(action);
     setError('');
     try {
       await requestJson(action.path, {
@@ -277,7 +276,12 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
         } else if (snapshot) {
           setData(snapshot); // rejected outright: undo the optimistic change
         }
-      } else setError('Save not confirmed. Keep this page open and retry.');
+      } else {
+        // Uncertain outcome (offline / 5xx). Now the save needs resolution, so
+        // mark it pending — this is what locks the nav and shows Check / retry.
+        setPending(action);
+        setError('Save not confirmed. Keep this page open and retry.');
+      }
       return null;
     } finally {
       setBusy(false);
@@ -534,7 +538,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
                     });
                   }}
                 >
-                  <fieldset disabled={!!pending}>
+                  <fieldset disabled={busy || !!pending}>
                     <DialogHeader className="modal-head">
                       <DialogTitle className="modal-title">
                         {draft.stream ? 'Correct entry' : draft.sign === 1 ? 'Add stars' : 'Deduct stars'}
