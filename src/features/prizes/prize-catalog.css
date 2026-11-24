@@ -18,8 +18,7 @@
 .catalog-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (min-width: 640px) { .catalog-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .child-profiles .catalog-filters label { margin: 0; font-size: 12px; font-weight: 650; color: #59665e; letter-spacing: 0.01em; }
-.catalog-filters select { display: block; width: 100%; min-height: 44px; margin-top: 5px; padding: 0 12px; border: 1px solid var(--color-field-border); border-radius: var(--radius-control); background: #fff; color: #293d35; font: inherit; font-size: 14px; }
-.catalog-filters select:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.child-profiles .catalog-filters button[data-slot=select-trigger] { margin-top: 5px; padding: 0 12px; font-size: 14px; color: #293d35; letter-spacing: normal; }
 .catalog .catalog-count { margin: 18px 0 0; font-size: 13px; font-weight: 600; color: #6c7a6e; font-variant-numeric: tabular-nums; }
 .child-profiles button.catalog-clear { margin-top: 18px; border: 1px solid var(--color-field-border); background: transparent; color: var(--color-action); }
 

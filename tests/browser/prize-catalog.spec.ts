@@ -1,7 +1,13 @@
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { navigate } from './navigation';
 
 const origin = 'http://127.0.0.1:4174';
+
+// The filters are shadcn Selects: open the combobox, then choose the option.
+async function pick(page: Page, combo: string, option: string) {
+  await page.getByRole('combobox', { name: combo }).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+}
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
 async function createPrize(request: APIRequestContext, fields: Record<string, unknown>) {
@@ -43,27 +49,27 @@ test('parent adds, finds, orders and archives prizes', async ({ page, request },
   await expect(lego.locator('img')).toHaveAttribute('referrerpolicy', 'no-referrer');
   await page.screenshot({ path: info.outputPath('catalog.png'), fullPage: true });
 
-  await page.getByLabel('Sort').selectOption('name-desc');
+  await pick(page, 'Sort', 'Name: Z–A');
   await expect(cards.getByRole('heading')).toHaveText([`Lego ${tag}`, `Ice cream ${tag}`, `Bike ${tag}`]);
-  await page.getByLabel('Type').selectOption('one-time');
+  await pick(page, 'Type', 'One-time');
   await expect(cards.getByRole('heading')).toHaveText([`Lego ${tag}`, `Bike ${tag}`]);
-  await page.getByLabel('Link').selectOption('with');
+  await pick(page, 'Link', 'Has link');
   await expect(cards.getByRole('heading')).toHaveText([`Lego ${tag}`]);
   await page.reload();
   await expect(cards.getByRole('heading')).toHaveText([`Lego ${tag}`]);
-  await expect(page.getByLabel('Sort')).toHaveValue('name-desc');
+  await expect(page.getByRole('combobox', { name: 'Sort' })).toHaveText('Name: Z–A');
 
   await page.getByRole('link', { name: `Lego ${tag}` }).click();
   await page.getByRole('button', { name: 'Archive prize' }).click();
   await expect(page.getByRole('status').filter({ hasText: `Saved Lego ${tag} · Archived.` })).toBeVisible();
   await expect(page.getByText('No matching prizes')).toBeVisible();
-  await page.getByLabel('Status').selectOption('archived');
+  await pick(page, 'Status', 'Archived');
   await expect(cards.getByRole('heading')).toHaveText([`Lego ${tag}`]);
   await expect(cards.getByText('Archived', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: `Lego ${tag}` }).click();
   await page.getByRole('button', { name: 'Save and restore' }).click();
-  await page.getByLabel('Status').selectOption('active');
+  await pick(page, 'Status', 'Active');
   await expect(cards.getByRole('heading')).toHaveText([`Lego ${tag}`]);
 });
 

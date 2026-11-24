@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLink, Plus, Search } from "lucide-react";
 import { Link } from '@tanstack/react-router';
 import { useCallback } from 'react';
@@ -8,7 +9,7 @@ import { RequestError } from '../children/requests';
 import { useResource } from '../children/use-resource';
 import { GoldStar } from '../children/StarBalance';
 import { PrizeImage } from './PrizeImage';
-import { rememberPrizeQuery, selectPrizes, storeName, type PrizeQuery } from './prize-query';
+import { LINK, rememberPrizeQuery, selectPrizes, SORT, STATUS, storeName, TYPE, type PrizeQuery } from './prize-query';
 import { usePrizeSave } from './prize-requests';
 import '../children/child-profiles.css';
 import './prize-catalog.css';
@@ -18,6 +19,31 @@ export function PrizeCost({ cost }: { cost: number }) {
     <GoldStar size={15} reduce animated={false} />
     <span className="prizes-cost-value" aria-hidden="true">{cost}</span>
   </span>;
+}
+
+type Option<T extends string> = { value: T; label: string };
+const STATUS_OPTIONS: Option<typeof STATUS[number]>[] = [
+  { value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }, { value: 'all', label: 'All' }];
+const TYPE_OPTIONS: Option<typeof TYPE[number]>[] = [
+  { value: 'all', label: 'All' }, { value: 'one-time', label: 'One-time' }, { value: 'repeatable', label: 'Repeatable' }];
+const LINK_OPTIONS: Option<typeof LINK[number]>[] = [
+  { value: 'all', label: 'All' }, { value: 'with', label: 'Has link' }, { value: 'without', label: 'No link' }];
+const SORT_OPTIONS: Option<typeof SORT[number]>[] = [
+  { value: 'cost-asc', label: 'Cost: low to high' }, { value: 'cost-desc', label: 'Cost: high to low' },
+  { value: 'name-asc', label: 'Name: A–Z' }, { value: 'name-desc', label: 'Name: Z–A' }, { value: 'newest', label: 'Newest' }];
+
+// One labelled filter on the shared shadcn Select; `items` lets the trigger show the label.
+function FilterSelect<T extends string>({ label, options, value, onChange }: {
+  label: string; options: Option<T>[]; value: T; onChange: (value: T) => void;
+}) {
+  return <label>{label}
+    <Select items={options} value={value} onValueChange={next => { if (next != null) onChange(next); }}>
+      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  </label>;
 }
 
 function PrizeCard({ prize }: { prize: Prize }) {
@@ -77,27 +103,14 @@ export function PrizeList({ query, onQueryChange, onSessionExpired }: {
           onChange={event => set({ q: event.target.value || undefined })} />
       </label>
       <div className="catalog-filters">
-        <label>Status
-          <select value={query.status ?? 'active'} onChange={event => set({ status: event.target.value === 'active' ? undefined : event.target.value as PrizeQuery['status'] })}>
-            <option value="active">Active</option><option value="archived">Archived</option><option value="all">All</option>
-          </select>
-        </label>
-        <label>Type
-          <select value={query.type ?? 'all'} onChange={event => set({ type: event.target.value === 'all' ? undefined : event.target.value as PrizeQuery['type'] })}>
-            <option value="all">All</option><option value="one-time">One-time</option><option value="repeatable">Repeatable</option>
-          </select>
-        </label>
-        <label>Link
-          <select value={query.link ?? 'all'} onChange={event => set({ link: event.target.value === 'all' ? undefined : event.target.value as PrizeQuery['link'] })}>
-            <option value="all">All</option><option value="with">Has link</option><option value="without">No link</option>
-          </select>
-        </label>
-        <label>Sort
-          <select value={query.sort ?? 'cost-asc'} onChange={event => set({ sort: event.target.value === 'cost-asc' ? undefined : event.target.value as PrizeQuery['sort'] })}>
-            <option value="cost-asc">Cost: low to high</option><option value="cost-desc">Cost: high to low</option>
-            <option value="name-asc">Name: A–Z</option><option value="name-desc">Name: Z–A</option><option value="newest">Newest</option>
-          </select>
-        </label>
+        <FilterSelect label="Status" options={STATUS_OPTIONS} value={query.status ?? 'active'}
+          onChange={value => set({ status: value === 'active' ? undefined : value })} />
+        <FilterSelect label="Type" options={TYPE_OPTIONS} value={query.type ?? 'all'}
+          onChange={value => set({ type: value === 'all' ? undefined : value })} />
+        <FilterSelect label="Link" options={LINK_OPTIONS} value={query.link ?? 'all'}
+          onChange={value => set({ link: value === 'all' ? undefined : value })} />
+        <FilterSelect label="Sort" options={SORT_OPTIONS} value={query.sort ?? 'cost-asc'}
+          onChange={value => set({ sort: value === 'cost-asc' ? undefined : value })} />
       </div>
     </form>
 
