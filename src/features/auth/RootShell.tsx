@@ -8,6 +8,7 @@ import { SessionProvider } from './session-context';
 import './parent-access.css';
 import { ChildProfiles } from '../children/ChildProfiles';
 import { RuleSettings } from '../children/RuleSettings';
+import { ChildAssignments } from '../children/ChildAssignments';
 import { clearPrizeSaves } from '../children/Prizes';
 import { clearScoreSaves } from '../children/ScoreDay';
 import { clearChildSave, clearRuleSave, resumeChildSave, resumeRuleSave, useChildSave, useRuleSave } from '../children/requests';
@@ -15,7 +16,7 @@ import { clearChildSave, clearRuleSave, resumeChildSave, resumeRuleSave, useChil
 const pages = [
   { id: 'home', label: 'Home', path: '/' },
   { id: 'children', label: 'Manage children', path: '/children' },
-  { id: 'templates', label: 'Templates & assignments', path: '/templates' },
+  { id: 'templates', label: 'Activity templates', path: '/templates' },
   { id: 'profile', label: 'Profile', path: '/profile' },
 ] as const;
 
@@ -41,9 +42,12 @@ export function RootShell() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signInPath = useRouterState({ select: (state) => state.location.href });
   const menu = activePage(pathname);
+  // A locked rule save is either an assignment edit (scoped to one child) or a template edit.
+  const assignmentLockChildId = ruleSaveLocked && 'intent' in ruleSave && ruleSave.intent.path.startsWith('/api/children/')
+    ? decodeURIComponent(ruleSave.intent.path.split('/')[3] ?? '') : null;
   // While a save is locked, show that feature's recovery UI. Keep the live route mounted when it
   // already is that feature (so an in-progress edit survives); override it only after navigating away.
-  const lockedPage = childSaveLocked ? 'children' : ruleSaveLocked ? 'templates' : null;
+  const lockedPage = childSaveLocked ? 'children' : ruleSaveLocked && !assignmentLockChildId ? 'templates' : null;
 
   // Close the menu when the route changes (menu links, back/forward, or in-app navigation).
   useEffect(() => { setMenuOpen(false); }, [pathname]);
@@ -145,6 +149,8 @@ export function RootShell() {
           </>}
           </div>
         </section>
+      : assignmentLockChildId && pathname !== `/children/${assignmentLockChildId}/assignments`
+        ? <ChildAssignments childId={assignmentLockChildId} onSessionExpired={sessionExpired} />
       : lockedPage && menu !== lockedPage
         ? (lockedPage === 'children'
             ? <ChildProfiles onSessionExpired={sessionExpired} />

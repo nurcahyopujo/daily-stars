@@ -4,7 +4,7 @@ import { ProfilePage } from './features/auth/ProfilePage';
 import { useSession } from './features/auth/session-context';
 import { ChildProfiles } from './features/children/ChildProfiles';
 import { RuleSettings } from './features/children/RuleSettings';
-import { ChildDayRoute, ChildPrizesRoute, ChildReviewRoute } from './features/children/child-routes';
+import { ChildDayRoute, ChildPrizesRoute, ChildReviewRoute, ChildAssignmentsRoute } from './features/children/child-routes';
 
 function HomePage() {
   return (
@@ -50,6 +50,7 @@ const routeTree = rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/day', validateSearch: dateSearch, component: ChildDayRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/prizes', component: ChildPrizesRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/review', validateSearch: dateSearch, component: ChildReviewRoute }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/assignments', component: ChildAssignmentsRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/templates', component: RuleSettingsPage }),
 ]);
 

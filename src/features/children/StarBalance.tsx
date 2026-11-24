@@ -120,22 +120,22 @@ export function DayStars({ today, total, past = false }: { today: number; total:
   return (
     <div className={`day-stars${today > 0 ? ' is-up' : today < 0 ? ' is-down' : ' is-zero'}`}>
       <p className="day-stars-primary">
-        <GoldStar size={52} reduce={reduce} />
+        <GoldStar size={40} reduce={reduce} />
         <span className="star-balance-figure">
           <span className="star-balance-value" aria-label={todayAria}>
             <span aria-hidden="true">{sign}{Math.abs(shownToday)}</span>
           </span>
-          <span className="star-balance-label" aria-hidden="true">stars {when}</span>
+          <span className="star-balance-label" aria-hidden="true">{when}</span>
         </span>
       </p>
       <p className="day-stars-total">
-        <span className="day-stars-total-figure">
-          <GoldStar size={22} reduce={reduce} animated={false} />
+        <GoldStar size={30} reduce={reduce} animated={false} />
+        <span className="star-balance-figure">
           <span className="day-stars-total-value" aria-label={`${total} stars total`}>
             <span aria-hidden="true">{shownTotal}</span>
           </span>
+          <span className="star-balance-label" aria-hidden="true">total</span>
         </span>
-        <span className="star-balance-label" aria-hidden="true">total stars</span>
       </p>
     </div>
   );

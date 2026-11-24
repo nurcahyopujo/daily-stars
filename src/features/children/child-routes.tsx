@@ -7,10 +7,12 @@ import { useHouseholdProfiles } from './useHouseholdProfiles';
 import { ScoreDay } from './ScoreDay';
 import { Prizes } from './Prizes';
 import { ActivityReview } from './ActivityReview';
+import { ChildAssignments } from './ChildAssignments';
 
 const dayApi = getRouteApi('/children/$childId/day');
 const prizesApi = getRouteApi('/children/$childId/prizes');
 const reviewApi = getRouteApi('/children/$childId/review');
+const assignmentsApi = getRouteApi('/children/$childId/assignments');
 
 // Resolve $childId against the household profiles; an unknown child redirects to the list.
 function ChildGate({ childId, render }: { childId: string; render: (child: Child, today: string) => ReactNode }) {
@@ -51,4 +53,11 @@ export function ChildReviewRoute() {
   const { sessionExpired } = useSession();
   return <ChildGate childId={childId} render={(child) =>
     <ActivityReview key={child.id} child={child} date={date} onSessionExpired={sessionExpired} />} />;
+}
+
+// ChildAssignments resolves the child itself (so RootShell can force-render it mid-save), so no gate here.
+export function ChildAssignmentsRoute() {
+  const { childId } = assignmentsApi.useParams();
+  const { sessionExpired } = useSession();
+  return <ChildAssignments key={childId} childId={childId} onSessionExpired={sessionExpired} />;
 }

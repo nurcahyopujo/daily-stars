@@ -317,6 +317,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
         {!pending && (
           <nav className="scoring-day-links" aria-label="Child pages">
             <Link to="/children/$childId/prizes" params={{ childId: child.id }}>Prizes</Link>
+            <Link to="/children/$childId/assignments" params={{ childId: child.id }}>Assignments</Link>
             {!draft && !conflict && <Link to="/children/$childId/review" params={{ childId: child.id }} search={{ date }}>Activity review</Link>}
           </nav>
         )}

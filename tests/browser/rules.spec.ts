@@ -28,7 +28,7 @@ test('edits a shared routine and recovers a lost response using the original act
   await page.goto('/children');
   await expect(page.getByRole('heading', { name: 'Manage children' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Create template' })).toHaveCount(0);
-  await navigate(page, 'Templates & assignments');
+  await navigate(page, 'Activity templates');
   await expect(page).toHaveURL('/templates');
   await expect(page.getByRole('heading', { name: 'Manage children' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Edit Morning routine, Make the bed' }).click();
@@ -47,7 +47,7 @@ test('edits a shared routine and recovers a lost response using the original act
   await expect(page.getByRole('alert')).toContainText('Save not confirmed');
   await page.getByRole('button', { name: 'Check / retry' }).click();
   await expect(page.getByRole('heading', { name: 'Manage children' })).toBeVisible();
-  await navigate(page, 'Templates & assignments');
+  await navigate(page, 'Activity templates');
   await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toContainText('Effective 2026-11-10');
   expect(keys).toEqual([keys[0], keys[0]]);
 });
@@ -62,7 +62,7 @@ test('creates a template and assigns it to an existing child through local D1', 
   await page.getByRole('button', { name: 'Create child', exact: true }).click();
   await expect(page.getByRole('heading', { name: child, exact: true })).toBeVisible();
 
-  await navigate(page, 'Templates & assignments');
+  await navigate(page, 'Activity templates');
   await page.reload();
   await page.getByRole('button', { name: 'Create template', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Create template' });
@@ -78,32 +78,35 @@ test('creates a template and assigns it to an existing child through local D1', 
   await editor.getByRole('button', { name: 'Save template' }).click();
   await expect(page.getByRole('button', { name: `Edit ${template}, ${activity}` })).toBeVisible();
 
-  const assignments = page.getByRole('button', { name: `Edit assignments for ${child}` });
-  await assignments.click();
-  const form = page.getByRole('dialog', { name: `Assignments for ${child}` });
-  await expect(form.getByRole('checkbox', { name: template })).toHaveAccessibleDescription(activity);
-  await form.getByRole('checkbox', { name: template }).check();
-  await form.getByRole('button', { name: 'Save assignments' }).click();
+  // Assignments live on the child's own detail page now, as an inline editor (no dialog).
+  await navigate(page, 'Manage children');
+  await page.getByRole('link', { name: child, exact: true }).click();
+  await page.getByRole('link', { name: 'Assignments', exact: true }).click();
+  await expect(page).toHaveURL(/\/children\/.+\/assignments$/);
+  await expect(page.getByRole('heading', { name: child, exact: true })).toBeVisible();
+
+  await expect(page.getByRole('checkbox', { name: template })).toHaveAccessibleDescription(activity);
+  await page.getByRole('checkbox', { name: template }).check();
+  await page.getByRole('button', { name: 'Save assignments' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved Assignments' })).toContainText('Effective');
-  await assignments.click();
-  await expect(form.getByText(`Effective tomorrow · ${template}`)).toBeVisible();
-  await expect(form.getByText('Active today · No templates')).toBeVisible();
-  const startToday = form.getByRole('checkbox', { name: /Start new templates today/ });
+  await expect(page.getByText(`Effective tomorrow · ${template}`)).toBeVisible();
+  await expect(page.getByText('Active today · No templates')).toBeVisible();
+
+  const startToday = page.getByRole('checkbox', { name: /Start new templates today/ });
   await startToday.check();
-  await form.getByRole('checkbox', { name: template }).check();
+  await page.getByRole('checkbox', { name: template }).check();
   await startToday.uncheck();
   await startToday.check();
-  await expect(form.getByRole('checkbox', { name: template })).toBeChecked();
-  await form.screenshot({ path: testInfo.outputPath('assignments-start-today.png') });
-  await form.getByRole('button', { name: 'Save assignments' }).click();
+  await expect(page.getByRole('checkbox', { name: template })).toBeChecked();
+  await page.screenshot({ path: testInfo.outputPath('assignments-start-today.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Save assignments' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved Assignments' })).toContainText('Effective');
-  await assignments.click();
-  await expect(form.getByText(`Active today · ${template}`)).toBeVisible();
-  await expect(form.getByText(`Effective tomorrow · ${template}`)).toBeVisible();
+  await expect(page.getByText(`Active today · ${template}`)).toBeVisible();
+  await expect(page.getByText(`Effective tomorrow · ${template}`)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await form.screenshot({ path: testInfo.outputPath('assignments.png') });
-  await form.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.screenshot({ path: testInfo.outputPath('assignments.png'), fullPage: true });
 
+  await navigate(page, 'Activity templates');
   const edit = page.getByRole('button', { name: `Edit ${template}, ${activity}` });
   await edit.click();
   const detail = page.getByRole('dialog', { name: 'Template details' });
