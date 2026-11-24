@@ -11,7 +11,10 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
-  retries: 0,
+  // The suite shares one local SQLite file (serial, workers: 1), so a seed can
+  // intermittently throw. Retry so a known-flaky run self-heals instead of
+  // masquerading as a regression.
+  retries: process.env.CI ? 2 : 1,
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',

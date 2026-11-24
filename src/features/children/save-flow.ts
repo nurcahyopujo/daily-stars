@@ -99,7 +99,7 @@ export function useSaveFlow<I, R, C = unknown, T = unknown>(config: SaveFlowConf
       return { phase: 'rejected', message: outcome.message };
     }
     return { phase: 'recover', signInRequired: outcome.signInRequired };
-  }, [key]);
+  }, []);
 
   const run = useCallback(async (intent: I, options?: RunOptions<T>): Promise<SaveOutcome<R, C, T>> => {
     // Don't apply the optimistic guess if the engine would ignore this submit.
