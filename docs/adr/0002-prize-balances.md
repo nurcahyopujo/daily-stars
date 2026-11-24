@@ -7,3 +7,5 @@ Keep each redemption and its final void in a dedicated record. This preserves ea
 A redemption must fit the available balance when the database accepts the write. The balance guard and debit share one SQL write, protecting against concurrent spending. Each redemption has a stable client-generated ID so an uncertain retry recovers the original spend. Voiding a redemption restores its cost once. Later corrections to activity scores can make the balance negative, and future earnings cover that balance.
 
 The first version uses a parent-entered prize label and cost at redemption time. A parent confirms spending with the Redeem button after seeing the resulting balance. These decisions were agreed in the points and prizes design interview.
+
+Superseded in part by ADR 0005: parents can also pick a prize from the household catalog, which locks the cost to the catalog cost.

@@ -43,8 +43,11 @@ One point in a child’s score. Awards add stars and deductions subtract them.
 **Balance**:
 A child's running total minus the cost of redemptions still in effect. Later score corrections can bring the balance below zero.
 
+**Prize**:
+A household-wide reward that any child can redeem. It has a name, a cost in stars, and an optional store link and product image. A prize is either one-time or repeatable. Each child can redeem a one-time prize only once. Voiding that redemption lets the child redeem it again. Parents archive prizes rather than deleting them: an archived prize can't be redeemed but stays in history and can be restored.
+
 **Redemption**:
-A parent's record of a child spending stars on a prize. The parent names the prize and sets its cost when redeeming it.
+A parent's record of a child spending stars. The parent either picks a *Prize* or names one and sets its cost on the spot. The redemption keeps its own copy of the name and cost, so later changes to the prize never alter it.
 
 **Today's net**:
 The sum of a child's latest effective point contributions for today's activity date.
