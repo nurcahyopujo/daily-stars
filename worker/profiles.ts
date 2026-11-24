@@ -1,5 +1,6 @@
 import { ruleRoutes } from './rules.ts';
 import { prizes } from './prizes.ts';
+import { prizeCatalogRoutes } from './prize-catalog.ts';
 import { scoring } from './scoring.ts';
 import { getActivityReview } from './activity-review.ts';
 import type { ChildIntent } from '../shared/profiles.ts';
@@ -39,6 +40,8 @@ export async function profileRoutes(
   if (request.method === 'GET' && url.pathname === '/api/templates') {
     return json({ today, templates: await listTemplates(db, today) });
   }
+  const catalog = await prizeCatalogRoutes(request, db, parent, url.pathname);
+  if (catalog) return catalog;
   const rules = await ruleRoutes(request, db, parent, today, url.pathname);
   if (rules) return rules;
   const edit = /^\/api\/children\/([^/]+)$/.exec(url.pathname);

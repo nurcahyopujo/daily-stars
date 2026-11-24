@@ -12,12 +12,18 @@ test('parent redeems a prize and voids it to restore the balance', async ({ page
     headers: { Origin: origin, 'Idempotency-Key': crypto.randomUUID() },
     data: { points: 10, reason: 'Award' },
   });
+  // A prize list entry exists, so the redeem form opens on the list; this flow names a prize instead.
+  await request.post(origin + '/api/prizes', {
+    headers: { Origin: origin, 'Idempotency-Key': crypto.randomUUID() },
+    data: { name: 'Listed prize ' + crypto.randomUUID(), cost: 1, oneTime: false },
+  });
   await page.goto(origin + '/');
   const card = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: child.displayName, exact: true }) });
   await expect(card.getByRole('link', { name: 'Prizes' })).toHaveCount(0);
   await card.getByRole('link', { name: child.displayName, exact: true }).click();
   await page.getByRole('link', { name: 'Prizes', exact: true }).click();
   await expect(page.getByLabel('10 stars', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Something else' }).click();
   await page.getByLabel('Prize name', { exact: true }).fill('Choose a movie');
   await page.getByLabel('Stars to spend').fill('11');
   await expect(page.getByRole('alert')).toHaveText('Stars to spend exceed the available balance.');

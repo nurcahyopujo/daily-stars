@@ -24,6 +24,8 @@ export function localParent(databasePath?: string): Plugin {
           || (/^\/api\/children\/[^/]+\/days\//.test(path) && ['GET','POST','PATCH','PUT'].includes(incoming.method ?? ''))
           || (/^\/api\/children\/[^/]+\/prizes(?:\/[\w-]+)?$/.test(path) && ['GET','PUT','PATCH'].includes(incoming.method ?? ''))
           || review
+          || (path === '/api/prizes' && ['GET', 'POST'].includes(incoming.method ?? ''))
+          || (/^\/api\/prizes\/[^/]+$/.test(path) && ['GET', 'PUT'].includes(incoming.method ?? ''))
           || (path === '/api/templates' && ['GET', 'POST'].includes(incoming.method ?? ''))
           || (/^\/api\/(templates\/[^/]+|children\/[^/]+\/assignments)$/.test(path) && ['GET', 'PUT'].includes(incoming.method ?? ''))
           || (/^\/api\/children\/[^/]+$/.test(path) && incoming.method === 'PATCH');

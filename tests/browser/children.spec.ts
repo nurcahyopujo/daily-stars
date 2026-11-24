@@ -71,7 +71,7 @@ test('Home shows the hero above child management; the menu switches to the sign-
   await burger.focus();
   await page.keyboard.press('Enter');
   await expect(navigation).toBeVisible();
-  await expect(navigation.getByRole('link')).toHaveText(['Home', 'Activity templates', 'Profile']);
+  await expect(navigation.getByRole('link')).toHaveText(['Home', 'Activity templates', 'Prizes', 'Profile']);
   await expect(navigation.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page');
   await page.screenshot({ path: testInfo.outputPath('hamburger-menu.png'), fullPage: true });
   await navigation.getByRole('link', { name: 'Home', exact: true }).focus();
