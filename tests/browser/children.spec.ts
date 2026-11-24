@@ -205,7 +205,11 @@ test('separates child management from Home and uses keyboard-accessible add/edit
   for (let index = 0; index < 8; index++) {
     await page.keyboard.press('Tab');
     // Focus guards and browser chrome are allowed; background page controls are not.
-    expect(await page.evaluate(() => !document.querySelector('main')?.contains(document.activeElement))).toBe(true);
+    // Poll rather than read once: the dialog's focus guard restores focus a tick
+    // after the keypress, which the immediate read can race under load.
+    await expect
+      .poll(() => page.evaluate(() => !document.querySelector('main')?.contains(document.activeElement)))
+      .toBe(true);
   }
   await page.getByRole('textbox', { name: 'Nickname', exact: true }).focus();
   await page.screenshot({ path: testInfo.outputPath('add-child-modal.png'), fullPage: true });
