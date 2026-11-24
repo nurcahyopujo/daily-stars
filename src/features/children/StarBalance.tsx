@@ -1,6 +1,34 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 
 const STAR_PATH = 'M24 3l5.9 12.9 14.1 1.6-10.4 9.6 2.8 13.9L24 34.3 11.6 41l2.8-13.9L4 17.5l14.1-1.6z';
+
+/** The small inline ★ score glyph with its signed count, used in the day view,
+ *  one-off entries, and the prize balance. A changed `key` replays the award
+ *  animation. */
+export function Stars({
+  value,
+  small = false,
+  signed = small,
+  animate = false,
+}: {
+  value: number;
+  small?: boolean;
+  signed?: boolean;
+  animate?: boolean;
+}) {
+  const count = small && value > 0 && value <= 5 ? value : 1;
+  return (
+    <span className="score-stars" aria-label={value + ' stars'}>
+      <span className={`score-stars-glyphs${animate ? ' is-awarded' : ''}`} aria-hidden="true">
+        {Array.from({ length: count }, (_, i) => (
+          <i key={i} style={{ '--i': i } as CSSProperties}>★</i>
+        ))}
+      </span>{' '}
+      {signed && value > 0 ? '+' : ''}
+      {value}
+    </span>
+  );
+}
 
 function usePrefersReducedMotion() {
   const [reduce, setReduce] = useState(false);

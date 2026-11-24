@@ -3,10 +3,11 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { CartesianGrid, Line, LineChart, ReferenceLine, XAxis, YAxis } from 'recharts';
 import { Link } from '@tanstack/react-router';
 import { BackLabel, backLinkClass } from './BackLink';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ActivityReviewData, DailyStars, DateRange, OutcomeCounts } from '../../../shared/activity-review';
 import type { Child } from '../../../shared/profiles';
-import { requestJson, RequestError } from './requests';
+import { RequestError } from './requests';
+import { useResource } from './use-resource';
 import './activity-review.css';
 
 const chartConfig = {
@@ -184,29 +185,21 @@ function DailyStarsChart({ dailyStars }: { dailyStars: DailyStars[] }) {
 
 export function ActivityReview({ child, date, onSessionExpired }: { child: Child; date?: string; onSessionExpired: () => void }) {
   const [period, setPeriod] = useState('7');
-  const [data, setData] = useState<ActivityReviewData | null>(null);
   const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
   const periodControl = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    requestJson<ActivityReviewData>(
-      '/api/children/' + encodeURIComponent(child.id) + '/activity-review?days=' + period,
-      { signal: controller.signal },
-    ).then((review) => {
-      if (!controller.signal.aborted) setData(review);
-    }).catch((failure) => {
-      if (controller.signal.aborted) return;
-      if (failure instanceof RequestError && failure.status === 401) onSessionExpired();
-      else setError(true);
-    });
-    return () => controller.abort();
-  }, [child.id, period, attempt, onSessionExpired]);
+  const review = useResource<ActivityReviewData>(
+    '/api/children/' + encodeURIComponent(child.id) + '/activity-review?days=' + period,
+    {
+      onError: (failure) => {
+        if (failure instanceof RequestError && failure.status === 401) onSessionExpired();
+        else setError(true);
+      },
+    },
+  );
+  const data = review.data;
 
   const selectPeriod = (next: string) => {
     if (next === period) return;
-    setData(null);
     setError(false);
     setPeriod(next);
   };
@@ -239,7 +232,7 @@ export function ActivityReview({ child, date, onSessionExpired }: { child: Child
         <Button type="button" onClick={() => {
           periodControl.current?.focus();
           setError(false);
-          setAttempt(attempt + 1);
+          review.reload();
         }}>Reload review</Button>
       </div>}
 
