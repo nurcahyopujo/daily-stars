@@ -1,5 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { useId } from 'react';
 import type { TemplateVersion } from '../../../shared/profiles';
 
@@ -31,10 +32,12 @@ export function TemplatePicker({ options, selected, onChange, title, disabled }:
     </label>)}
     {selected.length > 0 && <ol className="child-profiles-order" aria-label="Template order">
       {selected.map((id, index) => <li key={id}>
-        <span>{options.find(option => option.id === id)?.version.name ?? 'Unavailable template'}</span>
-        <Button type="button" disabled={index === 0} onClick={() => onChange(moveItem(selected, index, -1))} aria-label={`Move template ${index + 1} up`}>↑</Button>
-        <Button type="button" disabled={index === selected.length - 1} onClick={() => onChange(moveItem(selected, index, 1))} aria-label={`Move template ${index + 1} down`}>↓</Button>
-        <Button type="button" onClick={() => onChange(selected.filter(item => item !== id))} aria-label={`Remove template ${index + 1}`}>Remove</Button>
+        <span className="child-profiles-order-name">{options.find(option => option.id === id)?.version.name ?? 'Unavailable template'}</span>
+        <span className="child-profiles-order-controls">
+          <Button type="button" className="child-profiles-order-move" disabled={index === 0} onClick={() => onChange(moveItem(selected, index, -1))} aria-label={`Move template ${index + 1} up`}><ChevronUp size={16} aria-hidden="true" /></Button>
+          <Button type="button" className="child-profiles-order-move" disabled={index === selected.length - 1} onClick={() => onChange(moveItem(selected, index, 1))} aria-label={`Move template ${index + 1} down`}><ChevronDown size={16} aria-hidden="true" /></Button>
+          <Button type="button" className="child-profiles-order-remove" onClick={() => onChange(selected.filter(item => item !== id))} aria-label={`Remove template ${index + 1}`}>Remove</Button>
+        </span>
       </li>)}
     </ol>}
   </fieldset>;

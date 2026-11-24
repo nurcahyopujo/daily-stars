@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { seedBrowserDatabase } from './database';
 
 const origin = 'http://127.0.0.1:4174';
@@ -12,8 +12,21 @@ async function pick(page: Page, combo: string, option: string) {
   await page.getByRole('option', { name: option, exact: true }).click();
 }
 
+// The review period is a segmented control of native radios.
+async function selectPeriod(page: Page, label: string) {
+  await page.getByRole('radio', { name: label, exact: true }).check();
+}
+
+// Each activity is a collapsible <details>; open it before reading its breakdown.
+function activityCard(page: Page, text: string) {
+  return page.locator('details.activity-review-card').filter({ hasText: text });
+}
+async function openCard(card: Locator) {
+  await card.evaluate((element) => { (element as HTMLDetailsElement).open = true; });
+}
+
 async function openDay(page: Page, name: string) {
-  await page.goto(origin + '/children');
+  await page.goto(origin + '/');
   const child = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { name, exact: true }),
   });
@@ -23,7 +36,7 @@ async function openDay(page: Page, name: string) {
 
 async function openReviewFromDay(page: Page, name: string) {
   await page.getByRole('link', { name: 'Activity review', exact: true }).click();
-  await expect(page.getByRole('heading', { name: name + '’s activity review' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: name + ' · Activity review' })).toBeVisible();
 }
 
 async function openReview(page: Page, name: string) {
@@ -41,37 +54,35 @@ test('parent reviews completed household days and switches to four weeks', async
 
   await page.setViewportSize({ width: 280, height: 700 });
   await openReview(page, name);
-  // Reproduce the wide table text from CI on either operating system.
-  await page.addStyleTag({ content: 'table { font-family: Verdana, system-ui; letter-spacing: 1px; }' });
   await expect(page.getByText('No activities were scheduled in either period.')).toBeVisible();
-  await expect(page.getByText('Current period: 2026-11-02 to 2026-11-08')).toBeVisible();
-  await expect(page.getByText('Previous period: 2026-10-26 to 2026-11-01')).toBeVisible();
+  await expect(page.getByText('Current Nov 2 – Nov 8')).toBeVisible();
+  await expect(page.getByText('Previous Oct 26 – Nov 1')).toBeVisible();
+
+  // The chart carries the daily stars visually; the accessible figures live in
+  // the hidden data table beside it.
+  await expect(page.locator('figure.activity-review-chart svg')).toBeVisible();
   const stars = page.getByRole('table', { name: 'Daily stars' });
-  const tableRegion = page.getByRole('region', { name: 'Daily stars' });
-  await tableRegion.focus();
-  await expect(tableRegion).toBeFocused();
-  expect(await tableRegion.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   await expect(stars.getByRole('row')).toHaveCount(8);
-  await expect(stars.getByRole('rowheader', { name: '2026-11-08' })).toBeVisible();
+  await expect(stars.getByRole('rowheader', { name: '2026-11-08' })).toHaveCount(1);
   await expect(stars.getByRole('rowheader', { name: '2026-11-09' })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('activity-review-empty.png'), fullPage: true });
 
-  const period = page.getByRole('combobox', { name: 'Review period', exact: true });
-  await period.click();
-  await page.getByRole('option', { name: 'Last 4 weeks', exact: true }).click();
-  await expect(period).toContainText('Last 4 weeks');
-  await expect(page.getByText('Current period: 2026-10-12 to 2026-11-08')).toBeVisible();
-  await expect(page.getByText('Previous period: 2026-09-14 to 2026-10-11')).toBeVisible();
+  await selectPeriod(page, 'Last 4 weeks');
+  await expect(page.getByRole('radio', { name: 'Last 4 weeks' })).toBeChecked();
+  await expect(page.getByText('Current Oct 12 – Nov 8')).toBeVisible();
+  await expect(page.getByText('Previous Sep 14 – Oct 11')).toBeVisible();
   await expect(stars.getByRole('row')).toHaveCount(29);
+  // The responsive chart replaces the old scrolling table: nothing overflows the
+  // 280px phone column.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(280);
 
   await context.setOffline(true);
-  await pick(page, 'Review period', 'Last 7 days');
+  await selectPeriod(page, 'Last 7 days');
   await expect(page.getByRole('alert')).toContainText('Couldn’t load the activity review.');
   await page.screenshot({ path: info.outputPath('activity-review-error.png'), fullPage: true });
   await context.setOffline(false);
   await page.getByRole('button', { name: 'Reload review' }).press('Enter');
-  await expect(period).toBeFocused();
+  await expect(page.getByRole('radio', { name: 'Last 7 days' })).toBeFocused();
   await expect(stars.getByRole('row')).toHaveCount(8);
 });
 
@@ -150,9 +161,15 @@ async function seedReviewHistory() {
 test('parent compares recorded outcomes using the assignments, schedules, and activity identities in each period', async ({ page }) => {
   const { name, secondName, morningName } = await seedReviewHistory();
   await openReview(page, name);
-  const renamed = page.getByRole('article').filter({ hasText: morningName + ' · Activity 1 of 2' });
+
+  const renamed = activityCard(page, morningName + ' · Activity 1 of 2');
   await expect(renamed.getByRole('heading', { name: 'Make the bed', exact: true })).toBeVisible();
+  // The collapsed summary carries an at-a-glance figure; the breakdown is hidden
+  // until the disclosure is opened.
+  await expect(renamed.getByText('3/5 done well')).toBeVisible();
   const current = renamed.getByRole('region', { name: 'Current period' });
+  await expect(current).toBeHidden();
+  await renamed.locator('summary').click();
   await expect(current.getByText('4 of 5 recorded')).toBeVisible();
   await expect(current.getByText('3 done correctly')).toBeVisible();
   await expect(current.getByText('1 needs improvement')).toBeVisible();
@@ -162,24 +179,32 @@ test('parent compares recorded outcomes using the assignments, schedules, and ac
   await expect(previous.getByText('1 done correctly')).toBeVisible();
   await expect(previous.getByText('3 unrecorded')).toBeVisible();
 
-  const duplicate = page.getByRole('article').filter({ hasText: morningName + ' · Activity 2 of 2' });
+  const duplicate = activityCard(page, morningName + ' · Activity 2 of 2');
   await expect(duplicate.getByRole('heading', { name: 'Make the bed', exact: true })).toBeVisible();
+  await openCard(duplicate);
   await expect(duplicate.getByRole('region', { name: 'Current period' }).getByText('0 of 1 recorded')).toBeVisible();
   await expect(duplicate.getByRole('region', { name: 'Previous period' }).getByText('Not scheduled')).toBeVisible();
 
-  const unassigned = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Set the alarm' }) });
+  const unassigned = activityCard(page, 'Set the alarm');
+  await openCard(unassigned);
   await expect(unassigned.getByRole('region', { name: 'Previous period' }).getByText('0 of 4 recorded')).toBeVisible();
   await expect(unassigned.getByRole('region', { name: 'Current period' }).getByText('Not scheduled')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Make the bed today' })).toHaveCount(0);
 
-  await pick(page, 'Review period', 'Last 4 weeks');
+  await selectPeriod(page, 'Last 4 weeks');
+  await openCard(renamed);
   await expect(current.getByText('5 of 9 recorded')).toBeVisible();
+  await openCard(duplicate);
   await expect(duplicate.getByRole('region', { name: 'Current period' }).getByText('0 of 2 recorded')).toBeVisible();
 
   await openReview(page, secondName);
-  const shared = page.getByRole('article').filter({ hasText: '1 of 5 recorded' });
+  // Two cards here are both "Make the bed"; the recorded count identifies the routine one.
+  const shared = activityCard(page, '1 of 5 recorded');
   await expect(shared.getByRole('heading', { name: 'Make the bed', exact: true })).toBeVisible();
-  await expect(shared.getByRole('region', { name: 'Current period' }).getByText('0 done correctly')).toBeVisible();
+  await openCard(shared);
+  const sharedCurrent = shared.getByRole('region', { name: 'Current period' });
+  await expect(sharedCurrent.getByText('1 of 5 recorded')).toBeVisible();
+  await expect(sharedCurrent.getByText('0 done correctly')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Set the alarm' })).toHaveCount(0);
 });
 
@@ -207,10 +232,10 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await expect(cellsOn(routineDate)).toHaveText(['+2', '+5', '+7']);
   await page.screenshot({ path: info.outputPath('activity-review.png'), fullPage: true });
 
-  await pick(page, 'Review period', 'Last 4 weeks');
+  await selectPeriod(page, 'Last 4 weeks');
   await expect(cellsOn(previousScoreDate)).toHaveText(['+1', '0', '+1']);
 
-  await page.getByRole('link', { name: /Back to day/ }).click();
+  await page.getByRole('link', { name, exact: true }).click();
   await expect(page.getByRole('button', { name: /Activity date/ })).toHaveAccessibleName(/6 Nov 2026/);
   await oneOff.getByRole('button', { name: 'Edit entry' }).click();
   await pick(page, 'Entry type', 'Deduction');
@@ -222,7 +247,7 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await openReviewFromDay(page, name);
   await expect(cellsOn(routineDate)).toHaveText(['+2', '-3', '-1']);
 
-  await page.getByRole('link', { name: /Back to day/ }).click();
+  await page.getByRole('link', { name, exact: true }).click();
   await oneOff.getByRole('button', { name: 'Void entry' }).click();
   const voidDialog = page.getByRole('alertdialog', { name: 'Void entry?' });
   await expect(voidDialog).toContainText('This is final.');
@@ -235,13 +260,14 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await openReviewFromDay(page, name);
   await expect(cellsOn(routineDate)).toHaveText(['+2', '0', '+2']);
 
-  await page.getByRole('link', { name: /Back to day/ }).click();
+  await page.getByRole('link', { name, exact: true }).click();
   await routine.getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(routine.getByText('Unrecorded', { exact: true })).toBeVisible();
   await openReviewFromDay(page, name);
   await expect(cellsOn(routineDate)).toHaveText(['0', '0', '0']);
-  const changedActivity = page.getByRole('article').filter({ hasText: morningName + ' · Activity 1 of 2' });
-  const current = changedActivity.getByRole('region', { name: 'Current period' });
-  await expect(current.getByText('3 of 5 recorded')).toBeVisible();
-  await expect(current.getByText('2 unrecorded')).toBeVisible();
+  const changedActivity = activityCard(page, morningName + ' · Activity 1 of 2');
+  await openCard(changedActivity);
+  const changedCurrent = changedActivity.getByRole('region', { name: 'Current period' });
+  await expect(changedCurrent.getByText('3 of 5 recorded')).toBeVisible();
+  await expect(changedCurrent.getByText('2 unrecorded')).toBeVisible();
 });

@@ -1,6 +1,34 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 
 const STAR_PATH = 'M24 3l5.9 12.9 14.1 1.6-10.4 9.6 2.8 13.9L24 34.3 11.6 41l2.8-13.9L4 17.5l14.1-1.6z';
+
+/** The small inline ★ score glyph with its signed count, used in the day view,
+ *  one-off entries, and the prize balance. A changed `key` replays the award
+ *  animation. */
+export function Stars({
+  value,
+  small = false,
+  signed = small,
+  animate = false,
+}: {
+  value: number;
+  small?: boolean;
+  signed?: boolean;
+  animate?: boolean;
+}) {
+  const count = small && value > 0 && value <= 5 ? value : 1;
+  return (
+    <span className="score-stars" aria-label={value + ' stars'}>
+      <span className={`score-stars-glyphs${animate ? ' is-awarded' : ''}`} aria-hidden="true">
+        {Array.from({ length: count }, (_, i) => (
+          <i key={i} style={{ '--i': i } as CSSProperties}>★</i>
+        ))}
+      </span>{' '}
+      {signed && value > 0 ? '+' : ''}
+      {value}
+    </span>
+  );
+}
 
 function usePrefersReducedMotion() {
   const [reduce, setReduce] = useState(false);
@@ -44,8 +72,9 @@ function useCountUp(value: number, reduce: boolean) {
 }
 
 /** The gold star glyph: vertical gradient fill, a one-shot specular sweep, and
- *  mount glints. Shared by the children cards and the day hero. */
-function GoldStar({ size, reduce, animated = true }: { size: number; reduce: boolean; animated?: boolean }) {
+ *  mount glints. Shared by the children cards, the day hero, and the prize
+ *  balance / redemption costs. */
+export function GoldStar({ size, reduce, animated = true }: { size: number; reduce: boolean; animated?: boolean }) {
   const live = animated && !reduce;
   const id = useId();
   const fill = `${id}-fill`;
@@ -120,22 +149,22 @@ export function DayStars({ today, total, past = false }: { today: number; total:
   return (
     <div className={`day-stars${today > 0 ? ' is-up' : today < 0 ? ' is-down' : ' is-zero'}`}>
       <p className="day-stars-primary">
-        <GoldStar size={52} reduce={reduce} />
+        <GoldStar size={40} reduce={reduce} />
         <span className="star-balance-figure">
           <span className="star-balance-value" aria-label={todayAria}>
             <span aria-hidden="true">{sign}{Math.abs(shownToday)}</span>
           </span>
-          <span className="star-balance-label" aria-hidden="true">stars {when}</span>
+          <span className="star-balance-label" aria-hidden="true">{when}</span>
         </span>
       </p>
       <p className="day-stars-total">
-        <span className="day-stars-total-figure">
-          <GoldStar size={22} reduce={reduce} animated={false} />
+        <GoldStar size={30} reduce={reduce} animated={false} />
+        <span className="star-balance-figure">
           <span className="day-stars-total-value" aria-label={`${total} stars total`}>
             <span aria-hidden="true">{shownTotal}</span>
           </span>
+          <span className="star-balance-label" aria-hidden="true">total</span>
         </span>
-        <span className="star-balance-label" aria-hidden="true">total stars</span>
       </p>
     </div>
   );

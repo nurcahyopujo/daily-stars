@@ -3,6 +3,7 @@ import type { Parent } from './auth.ts';
 import { dayBounds, jakartaToday, nextDate } from './calendar.ts';
 import { eligibleTemplates } from './child-storage.ts';
 import { ApiError, json } from './http.ts';
+import { fingerprintOf, findReceipt, saveUnconfirmed, staleEdit } from './mutation.ts';
 
 const allWeekdays = [1, 2, 3, 4, 5, 6, 7];
 const invalid = (message: string): never => { throw new ApiError(422, 'INVALID_INPUT', message); };
@@ -137,16 +138,12 @@ export async function ruleRoutes(request: Request, db: D1Database, parent: Paren
     invalid('Supply a valid retirement status.');
   const definition = !assignment && operation === 'save' && !retired
     ? { name: name(input.name, 'template name'), activities: activities(input.activities, !creating) } : null;
-  const intent = JSON.stringify([request.method, path, expected, assignment ? (startToday ? ['startToday', ids] : ids) : [operation, retired, definition]]);
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(intent));
-  const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-  async function replay() {
-    const row = await db.prepare('SELECT fingerprint, status, result_json FROM mutation_receipts WHERE actor_id = ? AND action_id = ?')
-      .bind(parent.sub, action).first<{ fingerprint: string; status: number; result_json: string }>();
-    if (!row) return null;
-    if (row.fingerprint !== fingerprint) throw new ApiError(409, 'ACTION_REUSED', 'This action was already used for different input.');
-    return json(JSON.parse(row.result_json), row.status);
-  }
+  const fingerprint = await fingerprintOf([request.method, path, expected,
+    assignment ? (startToday ? ['startToday', ids] : ids) : [operation, retired, definition]]);
+  const replay = async () => {
+    const row = await findReceipt(db, parent.sub, action, fingerprint);
+    return row ? json(row.result, row.status) : null;
+  };
   const saved = await replay();
   if (saved) return saved;
 
@@ -165,7 +162,7 @@ export async function ruleRoutes(request: Request, db: D1Database, parent: Paren
       if ((detail.pending ?? detail.current)?.revision !== expected) {
         const receipt = await replay();
         if (receipt) return receipt;
-        throw new ApiError(409, 'STALE_EDIT', 'These rules changed. Review the latest version before saving.', detail);
+        staleEdit('These rules changed. Review the latest version before saving.', detail);
       }
     };
     const detail = creating ? null : await loadDetail();
@@ -231,8 +228,8 @@ export async function ruleRoutes(request: Request, db: D1Database, parent: Paren
       if (message.includes('mutation_date_guard') && attempt === 0) continue;
       if (message.includes('mutation_write_guard') && assignment)
         invalid('A selected template or child is unavailable on the effective date. Reload the assignments.');
-      throw new ApiError(503, 'SAVE_UNCONFIRMED', 'Save not confirmed. Check / retry with the same action ID.');
+      saveUnconfirmed();
     }
   }
-  throw new ApiError(503, 'SAVE_UNCONFIRMED', 'Save not confirmed. Check / retry.');
+  saveUnconfirmed('Save not confirmed. Check / retry.');
 }

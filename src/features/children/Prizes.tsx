@@ -1,93 +1,112 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { BackLabel, backLinkClass } from './BackLink';
+import { useState } from 'react';
 import type { Child } from '../../../shared/profiles';
-import { requestJson, RequestError } from './requests';
-import { Stars } from './ScoreDay';
+import { requestJson } from './requests';
+import { useResource } from './use-resource';
+import { useSaveFlow } from './save-flow';
+import { StarBalance, GoldStar, Stars } from './StarBalance';
 
 type Account = { balance: number; history: { id: string; label: string; cost: number; recorded: string; voided: string | null }[] };
 type Action = { path: string; method: string; body: object };
-const outstanding = new Map<string, Action>();
-export function clearPrizeSaves() { outstanding.clear(); }
+
+// Redemptions are stamped in the household's Jakarta day; show the date and time
+// without seconds so the receipt reads cleanly.
+const recordedFormat = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta',
+});
 
 export function Prizes({ child }: { child: Child }) {
   const path = '/api/children/' + encodeURIComponent(child.id) + '/prizes';
-  const [data, setData] = useState<Account | null>(null);
   const [label, setLabel] = useState('');
   const [cost, setCost] = useState('');
-  const [pending, setPending] = useState(outstanding.get(child.id));
-  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [reload, refresh] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    requestJson<Account>(path, { signal: controller.signal }).then(account => { if (!controller.signal.aborted) setData(account); }).catch(() => {
-      if (!controller.signal.aborted) setMessage('Could not load prizes. Try reloading.');
-    });
-    return () => controller.abort();
-  }, [path, reload]);
-  async function send(action: Action) {
-    outstanding.set(child.id, action);
-    setPending(action);
-    setBusy(true);
-    setMessage('');
-    try {
-      await requestJson(action.path, { method: action.method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body) });
-      outstanding.delete(child.id);
-      setPending(undefined);
+  const account = useResource<Account>(path, { onError: () => setMessage('Could not load prizes. Try reloading.') });
+  // Redemptions carry their idempotency in the URL (a per-redeem UUID, or the
+  // redemption id for a void), so the request repeats safely on retry without an
+  // Idempotency-Key header. The Save flow tracks the pending save for recovery.
+  const flow = useSaveFlow<Action, null, unknown>({
+    key: 'prize:' + child.id,
+    request: (action) => requestJson(action.path, {
+      method: action.method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body),
+    }).then(() => null),
+  });
+  const busy = flow.busy;
+  const pending = flow.phase === 'recover';
+  function resolve(outcome: Awaited<ReturnType<typeof flow.run>>, method: string) {
+    if (outcome.phase === 'success') {
+      flow.dismiss();
       setLabel('');
       setCost('');
-      setMessage(action.method === 'PATCH' ? 'Redemption voided. Stars returned.' : 'Prize redeemed.');
-      setData(null);
-      refresh(n => n + 1);
-    } catch (error) {
-      if (error instanceof RequestError && error.status >= 400 && error.status < 500 && error.status !== 401) {
-        outstanding.delete(child.id);
-        setPending(undefined);
-        setMessage(error.message);
-        refresh(n => n + 1);
-      } else setMessage('Save not confirmed. Keep this page open and check / retry.');
-    } finally { setBusy(false); }
+      setMessage(method === 'PATCH' ? 'Redemption voided. Stars returned.' : 'Prize redeemed.');
+      account.reload();
+    } else if (outcome.phase === 'rejected' || outcome.phase === 'conflict') {
+      flow.dismiss();
+      setMessage(outcome.phase === 'rejected' ? outcome.message : 'Could not complete. Reload and try again.');
+      account.reload();
+    } else if (outcome.phase === 'recover') setMessage('Save not confirmed. Keep this page open and check / retry.');
   }
-  const exceedsBalance = data !== null && Number(cost) > data.balance;
+  async function send(action: Action) {
+    setMessage('');
+    resolve(await flow.run(action), action.method);
+  }
+  function recheck() {
+    const method = flow.intent?.method ?? 'PUT';
+    void flow.retry().then(outcome => resolve(outcome, method));
+  }
+  const exceedsBalance = account.data !== null && Number(cost) > account.data.balance;
   return <section className="child-profiles score-day prizes-page">
-    {!pending && <Link className="scoring-day-back" to="/children">← Manage children</Link>}
+    {!pending && <Link className={backLinkClass} to="/children/$childId" params={{ childId: child.id }}><BackLabel>{child.displayName}</BackLabel></Link>}
     <header className="scoring-day-head"><h1>{child.displayName} · Prizes</h1></header>
     {message && <p role="status" className="prizes-message">{message}</p>}
-    {pending && <div role="alert"><p>Check the submitted redemption before continuing.</p>
-      <Button disabled={busy} onClick={() => void send(pending)}>Check / retry</Button></div>}
-    {!data && <p role="status">Loading balance…</p>}
-    {data && <div className="prizes-balance">
-      <div className="prizes-balance-figure">
-        <span className="prizes-balance-label">Available balance</span>
-        <span className="prizes-balance-value"><Stars value={data.balance}/></span>
-      </div>
-      <Button className="prizes-reload" disabled={busy} onClick={() => refresh(n => n + 1)}>Reload</Button>
+    {pending && <div role="alert" className="prizes-pending"><p>Check the submitted redemption before continuing.</p>
+      <Button disabled={busy} onClick={() => recheck()}>Check / retry</Button></div>}
+    {!account.data && <p role="status" className="prizes-loading">Loading balance…</p>}
+    {account.data && <div className="prizes-hero">
+      <StarBalance balance={account.data.balance}/>
+      <Button className="prizes-reload" disabled={busy} onClick={() => account.reload()}>Reload</Button>
     </div>}
-    {!data && <Button className="prizes-reload" disabled={busy} onClick={() => refresh(n => n + 1)}>Reload balance</Button>}
-    {data && <>
+    {!account.data && <Button className="prizes-reload prizes-reload-standalone" disabled={busy} onClick={() => account.reload()}>Reload balance</Button>}
+    {account.data && <>
       <form className="child-profiles-editor prizes-form" onSubmit={event => {
         event.preventDefault();
         if (!pending && !busy && !exceedsBalance) void send({ path: path + '/' + crypto.randomUUID(), method: 'PUT', body: { label: label.trim(), cost: Number(cost) } });
       }}>
         <fieldset disabled={busy || Boolean(pending)}>
-          <label htmlFor="prize-name">Prize name</label>
-          <Input id="prize-name" required maxLength={160} value={label} onChange={event => setLabel(event.target.value)}/>
-          <label htmlFor="prize-cost">Stars to spend</label>
-          <Input id="prize-cost" aria-invalid={exceedsBalance} aria-describedby={exceedsBalance ? 'prize-cost-error' : undefined} type="number" required min={1} max={Math.max(0, data.balance)} step={1} value={cost} onChange={event => setCost(event.target.value)}/>
-          {exceedsBalance && <p id="prize-cost-error" role="alert">Stars to spend exceed the available balance.</p>}
-          {cost && !exceedsBalance && <p>Balance after redemption <Stars value={data.balance - Number(cost)}/></p>}
-          <Button type="submit" disabled={data.balance < 1 || !label.trim() || exceedsBalance}>Redeem</Button>
+          <h2 className="prizes-form-title">Redeem a prize</h2>
+          {account.data.balance < 1
+            ? <p className="prizes-note">No stars to spend yet. Earn stars on the day page, then come back to redeem a prize.</p>
+            : <>
+                <label htmlFor="prize-name">Prize name</label>
+                <Input id="prize-name" required maxLength={160} placeholder="e.g. Extra screen time" value={label} onChange={event => setLabel(event.target.value)}/>
+                <label htmlFor="prize-cost">Stars to spend</label>
+                <Input id="prize-cost" aria-invalid={exceedsBalance} aria-describedby={exceedsBalance ? 'prize-cost-error' : undefined} type="number" required min={1} max={Math.max(0, account.data.balance)} step={1} value={cost} onChange={event => setCost(event.target.value)}/>
+                {exceedsBalance && <p id="prize-cost-error" role="alert" className="prizes-form-error">Stars to spend exceed the available balance.</p>}
+                {cost && !exceedsBalance && <p className="prizes-after">Balance after redemption <Stars value={account.data.balance - Number(cost)}/></p>}
+                <Button type="submit" className="prizes-redeem" disabled={account.data.balance < 1 || !label.trim() || exceedsBalance}>Redeem</Button>
+              </>}
         </fieldset>
       </form>
       <h2 className="prizes-history-title">Redemption history</h2>
-      {!data.history.length && <p className="prizes-empty">No prizes redeemed yet.</p>}
-      <ul className="child-profiles-list prizes-history">{data.history.map(row => <li className={`child-profiles-card prizes-history-row${row.voided ? ' is-voided' : ''}`} key={row.id}>
-        <div><h3>{row.label}</h3><p>{row.cost} stars · {new Date(row.recorded).toLocaleString('en-GB', { timeZone: 'Asia/Jakarta' })} Jakarta</p>
-          {row.voided && <p className="prizes-voided-note">Voided · Stars returned</p>}</div>
-        {!row.voided && <Button className="prizes-void" disabled={busy || Boolean(pending)} onClick={() => void send({ path: path + '/' + row.id, method: 'PATCH', body: { void: true } })}>Void redemption</Button>}
-      </li>)}</ul>
+      {!account.data.history.length
+        ? <p className="prizes-empty"><GoldStar size={26} reduce animated={false}/>No prizes redeemed yet. Redeemed prizes appear here so both of you can see what was spent.</p>
+        : <ul className="prizes-history">{account.data.history.map(row => <li className={`prizes-history-row${row.voided ? ' is-voided' : ''}`} key={row.id}>
+          <div className="prizes-history-top">
+            <h3>{row.label}</h3>
+            <span className="prizes-cost" aria-label={`Costs ${row.cost} stars`}>
+              <GoldStar size={15} reduce animated={false}/>
+              <span className="prizes-cost-value" aria-hidden="true">{row.cost}</span>
+            </span>
+          </div>
+          <p className="prizes-history-meta">{recordedFormat.format(new Date(row.recorded))} · Jakarta</p>
+          <div className="prizes-history-foot">
+            {row.voided
+              ? <span className="prizes-voided-badge">Voided · Stars returned</span>
+              : <Button className="prizes-void" disabled={busy || Boolean(pending)} onClick={() => void send({ path: path + '/' + row.id, method: 'PATCH', body: { void: true } })}>Void redemption</Button>}
+          </div>
+        </li>)}</ul>}
     </>}
   </section>;
 }

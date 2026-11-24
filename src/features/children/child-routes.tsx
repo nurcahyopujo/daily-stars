@@ -7,10 +7,12 @@ import { useHouseholdProfiles } from './useHouseholdProfiles';
 import { ScoreDay } from './ScoreDay';
 import { Prizes } from './Prizes';
 import { ActivityReview } from './ActivityReview';
+import { ChildAssignments } from './ChildAssignments';
 
-const dayApi = getRouteApi('/children/$childId/day');
+const dayApi = getRouteApi('/children/$childId');
 const prizesApi = getRouteApi('/children/$childId/prizes');
 const reviewApi = getRouteApi('/children/$childId/review');
+const assignmentsApi = getRouteApi('/children/$childId/assignments');
 
 // Resolve $childId against the household profiles; an unknown child redirects to the list.
 function ChildGate({ childId, render }: { childId: string; render: (child: Child, today: string) => ReactNode }) {
@@ -20,7 +22,7 @@ function ChildGate({ childId, render }: { childId: string; render: (child: Child
   const child = data?.children.find((candidate) => candidate.id === childId);
 
   useEffect(() => {
-    if (data && !child) void navigate({ to: '/children' });
+    if (data && !child) void navigate({ to: '/' });
   }, [data, child, navigate]);
 
   if (data && child) return render(child, data.today);
@@ -37,7 +39,7 @@ export function ChildDayRoute() {
   const navigate = useNavigate();
   return <ChildGate childId={childId} render={(child, today) =>
     <ScoreDay key={child.id} child={child} today={today} date={date}
-      onDateChange={(next) => void navigate({ to: '/children/$childId/day', params: { childId }, search: { date: next }, replace: true })} />} />;
+      onDateChange={(next) => void navigate({ to: '/children/$childId', params: { childId }, search: { date: next }, replace: true })} />} />;
 }
 
 export function ChildPrizesRoute() {
@@ -51,4 +53,11 @@ export function ChildReviewRoute() {
   const { sessionExpired } = useSession();
   return <ChildGate childId={childId} render={(child) =>
     <ActivityReview key={child.id} child={child} date={date} onSessionExpired={sessionExpired} />} />;
+}
+
+// ChildAssignments resolves the child itself (so RootShell can force-render it mid-save), so no gate here.
+export function ChildAssignmentsRoute() {
+  const { childId } = assignmentsApi.useParams();
+  const { sessionExpired } = useSession();
+  return <ChildAssignments key={childId} childId={childId} onSessionExpired={sessionExpired} />;
 }

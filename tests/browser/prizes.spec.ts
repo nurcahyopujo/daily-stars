@@ -12,7 +12,7 @@ test('parent redeems a prize and voids it to restore the balance', async ({ page
     headers: { Origin: origin, 'Idempotency-Key': crypto.randomUUID() },
     data: { points: 10, reason: 'Award' },
   });
-  await page.goto(origin + '/children');
+  await page.goto(origin + '/');
   const card = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: child.displayName, exact: true }) });
   await expect(card.getByRole('link', { name: 'Prizes' })).toHaveCount(0);
   await card.getByRole('link', { name: child.displayName, exact: true }).click();

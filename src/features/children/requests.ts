@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from 'react';
 import type { AssignmentDetail, Child, ChildIntent, RuleSave, TemplateDetail } from '../../../shared/profiles';
+import { usePendingSave, type SaveState } from './pending-save';
 
 export class RequestError<T = Child> extends Error {
   constructor(public status: number, public code: string, message: string, public current?: T) {
@@ -22,29 +22,14 @@ export async function requestJson<T>(path: string, init: RequestInit = {}): Prom
   return body;
 }
 
-type Submitted = { action: string; intent: ChildIntent };
-type SaveState =
-  | { status: 'idle' }
-  | (Submitted & { status: 'saving' })
-  | (Submitted & { status: 'uncertain'; signInRequired?: boolean })
-  | (Submitted & { status: 'conflict'; current: Child })
-  | (Submitted & { status: 'rejected'; message: string })
-  | (Submitted & { status: 'success'; child: Child });
+// ─── Child saves ────────────────────────────────────────────────────────────
+// Child create/edit is a single at-a-time save, so it uses one fixed key.
+const CHILD_KEY = 'child';
+export type ChildSave = SaveState<ChildIntent, Child, Child>;
 
-// Memory only: preserve uncertain intent across screen unmount/resume, never across a reload.
-let state: SaveState = { status: 'idle' };
-const listeners = new Set<() => void>();
-function publish(next: SaveState) { state = next; listeners.forEach((listener) => listener()); }
-function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
-export function useChildSave() { return useSyncExternalStore(subscribe, () => state); }
-export function clearChildSave() { publish({ status: 'idle' }); }
-export function resumeChildSave() {
-  if (state.status === 'uncertain' && state.signInRequired) publish({ ...state, signInRequired: false });
-}
+export function useChildSave(): ChildSave { return usePendingSave<ChildIntent, Child, Child>(CHILD_KEY); }
 
-async function send(submitted: Submitted) {
-  publish({ ...submitted, status: 'saving' });
-  const { intent } = submitted;
+function runChild(intent: ChildIntent) {
   const { kind: _kind, ...body } = intent;
   const path = intent.kind === 'create' ? '/api/children' : `/api/children/${encodeURIComponent(intent.childId)}`;
   const input = intent.kind === 'edit' ? {
@@ -52,84 +37,68 @@ async function send(submitted: Submitted) {
     ...(intent.displayName !== undefined ? { displayName: intent.displayName } : {}),
     ...(intent.archive ? { archive: true } : {}),
   } : body;
-  try {
+  return async (action: string) => {
     const child = await requestJson<Child>(path, {
       method: intent.kind === 'create' ? 'POST' : 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': submitted.action },
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': action },
       body: JSON.stringify(input),
     });
     if (!child?.id || !Number.isSafeInteger(child.revision)) throw new Error('Invalid save response.');
-    if ('action' in state && state.action === submitted.action) publish({ ...submitted, status: 'success', child });
-  } catch (error) {
-    if (!('action' in state) || state.action !== submitted.action) return;
-    if (error instanceof RequestError && error.code === 'STALE_EDIT' && error.current) {
-      publish({ ...submitted, status: 'conflict', current: error.current });
-    } else if (error instanceof RequestError && [400, 404, 409, 422].includes(error.status)) {
-      publish({ ...submitted, status: 'rejected', message: error.message });
-    } else publish({ ...submitted, status: 'uncertain', signInRequired: error instanceof RequestError && error.status === 401 });
-  }
+    return child;
+  };
 }
 
-export function submitChild(intent: ChildIntent) {
-  if (['saving', 'uncertain', 'conflict'].includes(state.status)) return;
-  return send({ action: crypto.randomUUID(), intent });
+export const CHILD_SAVE_KEY = CHILD_KEY;
+// The domain write + conflict-resubmit builder a Save flow injects for the child key.
+export function childRequest(intent: ChildIntent, action: string) { return runChild(intent)(action); }
+export function applyChildConflict(intent: ChildIntent, current: Child): ChildIntent {
+  return intent.kind === 'edit' ? { ...intent, expectedRevision: current.revision } : intent;
 }
 
-export function retryChild() {
-  if (state.status === 'uncertain') return send({ action: state.action, intent: state.intent });
-}
+// ─── Template / assignment saves ──────────────────────────────────────────────
+// Rule edits (templates on the templates page, a child's assignment plan) are
+// likewise one at a time, so they share a single key; callers tell them apart by
+// the intent path.
+const RULE_KEY = 'rule';
+export type RuleIntent = { path: string; method: 'POST' | 'PUT'; body: object; label: string };
+export type RuleConflict = AssignmentDetail | TemplateDetail;
+export type RuleSaveState = SaveState<RuleIntent, RuleSave, RuleConflict>;
 
-export function applyChildChange() {
-  if (state.status !== 'conflict' || state.intent.kind !== 'edit') return;
-  return send({ action: crypto.randomUUID(), intent: { ...state.intent, expectedRevision: state.current.revision } });
-}
+export function useRuleSave(): RuleSaveState { return usePendingSave<RuleIntent, RuleSave, RuleConflict>(RULE_KEY); }
 
-type RuleIntent = { path: string; method: 'POST' | 'PUT'; body: object; label: string };
-type SubmittedRule = { action: string; intent: RuleIntent };
-type RuleState =
-  | { status: 'idle' }
-  | (SubmittedRule & { status: 'saving' })
-  | (SubmittedRule & { status: 'uncertain'; signInRequired: boolean })
-  | (SubmittedRule & { status: 'rejected'; message: string; current?: AssignmentDetail | TemplateDetail })
-  | (SubmittedRule & { status: 'success'; result: RuleSave });
-
-let ruleState: RuleState = { status: 'idle' };
-const ruleListeners = new Set<() => void>();
-function publishRule(next: RuleState) { ruleState = next; ruleListeners.forEach(listener => listener()); }
-function subscribeRule(listener: () => void) {
-  ruleListeners.add(listener);
-  return () => { ruleListeners.delete(listener); };
-}
-export function useRuleSave() { return useSyncExternalStore(subscribeRule, () => ruleState); }
-export function clearRuleSave() { publishRule({ status: 'idle' }); }
-export function resumeRuleSave() {
-  if (ruleState.status === 'uncertain' && ruleState.signInRequired) publishRule({ ...ruleState, signInRequired: false });
-}
-
-async function sendRule(submitted: SubmittedRule) {
-  publishRule({ ...submitted, status: 'saving' });
-  const { path, method, body } = submitted.intent;
-  try {
-    const result = await requestJson<RuleSave>(path, {
-      method, headers: { 'Content-Type': 'application/json', 'Idempotency-Key': submitted.action },
-      body: JSON.stringify(body),
+function runRule(intent: RuleIntent) {
+  return async (action: string) => {
+    const result = await requestJson<RuleSave>(intent.path, {
+      method: intent.method, headers: { 'Content-Type': 'application/json', 'Idempotency-Key': action },
+      body: JSON.stringify(intent.body),
     });
     if (!result?.id || !result.effectiveDate || !Number.isSafeInteger(result.revision)) throw new Error('Invalid save response.');
-    if ('action' in ruleState && ruleState.action === submitted.action) publishRule({ ...submitted, status: 'success', result });
-  } catch (error) {
-    if (!('action' in ruleState) || ruleState.action !== submitted.action) return;
-    if (error instanceof RequestError && [400, 404, 409, 422].includes(error.status)) {
-      publishRule({ ...submitted, status: 'rejected', message: error.message,
-        current: error.code === 'STALE_EDIT' ? (error as RequestError<AssignmentDetail | TemplateDetail>).current : undefined });
-    } else publishRule({ ...submitted, status: 'uncertain', signInRequired: error instanceof RequestError && error.status === 401 });
+    return result;
+  };
+}
+
+export const RULE_SAVE_KEY = RULE_KEY;
+// The domain write a Save flow injects for the shared rule key.
+export function ruleRequest(intent: RuleIntent, action: string) { return runRule(intent)(action); }
+
+// Which editor an in-flight rule save belongs to, so RootShell can force-render it
+// after the user navigates away. Only a save still saving/recovering locks a page;
+// a settled conflict/success/rejection stays on its own screen. The id segment is
+// URL-encoded in both the save path and the route, so editorPath compares directly.
+export type RuleRecovery =
+  | { kind: 'assignment'; childId: string }
+  | { kind: 'template'; target: { kind: 'create' } | { kind: 'edit'; id: string }; editorPath: string };
+
+export function ruleRecovery(state: RuleSaveState): RuleRecovery | null {
+  if (!('intent' in state) || (state.status !== 'saving' && state.status !== 'uncertain')) return null;
+  const seg = state.intent.path.split('/');
+  if (state.intent.path.startsWith('/api/children/')) {
+    return { kind: 'assignment', childId: decodeURIComponent(seg[3] ?? '') };
   }
-}
-
-export function submitRule(intent: RuleIntent) {
-  if (ruleState.status === 'saving' || ruleState.status === 'uncertain') return;
-  return sendRule({ action: crypto.randomUUID(), intent });
-}
-
-export function retryRule() {
-  if (ruleState.status === 'uncertain') return sendRule({ action: ruleState.action, intent: ruleState.intent });
+  if (state.intent.path.startsWith('/api/templates')) {
+    return seg.length > 3 && seg[3]
+      ? { kind: 'template', target: { kind: 'edit', id: decodeURIComponent(seg[3]) }, editorPath: `/templates/${seg[3]}` }
+      : { kind: 'template', target: { kind: 'create' }, editorPath: '/templates/new' };
+  }
+  return null;
 }

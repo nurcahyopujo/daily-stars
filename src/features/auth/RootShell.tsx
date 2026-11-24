@@ -7,46 +7,59 @@ import { loadSession, type SessionState } from './session';
 import { SessionProvider } from './session-context';
 import './parent-access.css';
 import { ChildProfiles } from '../children/ChildProfiles';
-import { RuleSettings } from '../children/RuleSettings';
-import { clearPrizeSaves } from '../children/Prizes';
-import { clearScoreSaves } from '../children/ScoreDay';
-import { clearChildSave, clearRuleSave, resumeChildSave, resumeRuleSave, useChildSave, useRuleSave } from '../children/requests';
+import { TemplateEditor } from '../children/TemplateEditor';
+import { ChildAssignments } from '../children/ChildAssignments';
+import { ruleRecovery, useChildSave, useRuleSave } from '../children/requests';
+import { clearAll, resume as resumeSaves } from '../children/pending-save';
 
 const pages = [
   { id: 'home', label: 'Home', path: '/' },
-  { id: 'children', label: 'Manage children', path: '/children' },
-  { id: 'templates', label: 'Templates & assignments', path: '/templates' },
+  { id: 'templates', label: 'Activity templates', path: '/templates' },
   { id: 'profile', label: 'Profile', path: '/profile' },
 ] as const;
 
 function activePage(pathname: string) {
-  if (pathname === '/' || pathname === '/home') return 'home';
-  if (pathname.startsWith('/children')) return 'children';
   if (pathname.startsWith('/templates')) return 'templates';
   if (pathname.startsWith('/profile')) return 'profile';
-  return 'not-found';
+  // Home hosts the children list, so '/', '/home' and every '/children…' page belong to it.
+  return 'home';
 }
 
 export function RootShell() {
   const [session, setSession] = useState<SessionState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const lastEmail = useRef<string | null>(null);
   const childSave = useChildSave();
   const ruleSave = useRuleSave();
   const childSaveLocked = ['saving', 'uncertain', 'conflict'].includes(childSave.status);
-  const ruleSaveLocked = ruleSave.status === 'saving' || ruleSave.status === 'uncertain';
-  const saveLocked = childSaveLocked || ruleSaveLocked;
+  // Which editor, if any, a locked rule save belongs to — the intent-path parsing that
+  // screens used to duplicate now lives behind one shared helper.
+  const recovery = ruleRecovery(ruleSave);
+  const saveLocked = childSaveLocked || recovery !== null;
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signInPath = useRouterState({ select: (state) => state.location.href });
   const menu = activePage(pathname);
+  const assignmentLockChildId = recovery?.kind === 'assignment' ? recovery.childId : null;
+  const templateLockTarget = recovery?.kind === 'template' ? recovery.target : null;
+  const templateEditorPath = recovery?.kind === 'template' ? recovery.editorPath : null;
   // While a save is locked, show that feature's recovery UI. Keep the live route mounted when it
   // already is that feature (so an in-progress edit survives); override it only after navigating away.
-  const lockedPage = childSaveLocked ? 'children' : ruleSaveLocked ? 'templates' : null;
+  // The children list lives on Home, so any '/' or '/children…' page already shows its recovery UI.
+  const onChildrenSurface = pathname === '/' || pathname === '/home' || pathname.startsWith('/children');
 
   // Close the menu when the route changes (menu links, back/forward, or in-app navigation).
   useEffect(() => { setMenuOpen(false); }, [pathname]);
+
+  // Let the sticky topbar detach visually once the page scrolls beneath it.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 2);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     let controller: AbortController;
@@ -58,9 +71,8 @@ export function RootShell() {
       loadSession(signal).then((result) => {
         if (!signal.aborted) {
           if (result.status === 'signed-in') {
-            if (lastEmail.current && lastEmail.current !== result.parent.email) { clearChildSave(); clearScoreSaves(); clearPrizeSaves(); clearRuleSave(); }
-            resumeChildSave();
-            resumeRuleSave();
+            if (lastEmail.current && lastEmail.current !== result.parent.email) clearAll();
+            resumeSaves();
             lastEmail.current = result.parent.email;
           }
           setSession(result);
@@ -88,9 +100,7 @@ export function RootShell() {
   }, [attempt]);
 
   const signOut = () => {
-    clearScoreSaves(); clearPrizeSaves();
-    clearChildSave();
-    clearRuleSave();
+    clearAll();
     flushSync(() => setSession({ status: 'loading' }));
     window.location.assign('/cdn-cgi/access/logout');
   };
@@ -99,7 +109,7 @@ export function RootShell() {
   return (
     <SessionProvider value={{ session, parent: session.status === 'signed-in' ? session.parent : null, signOut, sessionExpired }}>
     <main>
-    <header className="parent-topbar">
+    <header className="parent-topbar" data-scrolled={scrolled || undefined}>
       <div className="brand"><span className="star" aria-hidden="true">✦</span><span>Daily Stars</span></div>
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger render={<Button ref={menuButton} className="parent-menu-toggle" type="button" aria-label="Main menu" />}>
@@ -110,7 +120,7 @@ export function RootShell() {
         <PopoverContent align="end" sideOffset={8} className="parent-navigation">
         <nav aria-label="Main menu">
           {pages.map((page) => {
-            const disabled = saveLocked || ((page.id === 'children' || page.id === 'templates') && session.status !== 'signed-in');
+            const disabled = saveLocked || (page.id === 'templates' && session.status !== 'signed-in');
             const current = menu === page.id ? 'page' : undefined;
             if (disabled) {
               return <a key={page.id} href={page.path} aria-current={current} aria-disabled="true"
@@ -145,10 +155,12 @@ export function RootShell() {
           </>}
           </div>
         </section>
-      : lockedPage && menu !== lockedPage
-        ? (lockedPage === 'children'
-            ? <ChildProfiles onSessionExpired={sessionExpired} />
-            : <RuleSettings onSessionExpired={sessionExpired} />)
+      : assignmentLockChildId && pathname !== `/children/${assignmentLockChildId}/assignments`
+        ? <ChildAssignments childId={assignmentLockChildId} onSessionExpired={sessionExpired} />
+      : templateLockTarget && pathname !== templateEditorPath
+        ? <TemplateEditor target={templateLockTarget} onSessionExpired={sessionExpired} />
+      : childSaveLocked && !onChildrenSurface
+        ? <ChildProfiles onSessionExpired={sessionExpired} />
       : <Outlet />}
     </main>
     <footer>Every effort counts.</footer>

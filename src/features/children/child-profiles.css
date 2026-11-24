@@ -2,11 +2,11 @@
 .child-profiles-heading, .child-profiles-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-small); justify-content: space-between; }
 .child-profiles-heading { align-items: flex-end; gap: 16px; }
 .child-profiles-heading > div { flex: 1; min-width: 200px; }
-.child-profiles-heading h1 { margin: 0; font-size: clamp(26px, 7vw, 32px); line-height: 1.2; letter-spacing: -0.03em; }
+.child-profiles-heading h2 { margin: 0; font-size: clamp(26px, 7vw, 32px); line-height: 1.2; letter-spacing: -0.03em; }
 .child-profiles-heading p { margin: 4px 0 0; }
 .child-profiles h3 { font-size: 16px; margin: 0 0 8px; overflow-wrap: anywhere; }
 .child-profiles p { font-size: 14px; color: #59665e; }
-.child-profiles-date { margin: 24px 0 0; font-size: 12px; }
+.child-profiles-add { margin-top: 20px; }
 .child-profiles-tabs { max-width: 100%; gap: 4px; padding: 4px; border-radius: var(--radius-control); background: var(--color-action-soft); }
 .child-profiles-tabs [role=tab] { min-width: 0; padding-inline: 12px; border-radius: var(--radius-control); color: var(--color-action); box-shadow: none; transition: none; }
 .child-profiles-tabs [role=tab][aria-selected=true] { background: var(--color-action); color: white; }
@@ -22,7 +22,7 @@
 .child-profiles-children { display: grid; gap: 12px; }
 .child-profile-card { position: relative; padding: 18px 60px 18px 20px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); transition: border-color .15s ease, box-shadow .15s ease; }
 .child-profile-card:hover { border-color: var(--color-field-border); box-shadow: 0 6px 18px rgb(25 44 34 / 7%); }
-.child-profile-card h2 { margin: 0; font-size: 19px; font-weight: 650; line-height: 1.3; letter-spacing: -0.2px; overflow-wrap: anywhere; }
+.child-profile-card h3 { margin: 0; font-size: 19px; font-weight: 650; line-height: 1.3; letter-spacing: -0.2px; overflow-wrap: anywhere; }
 .child-profile-card p { margin: 0; overflow-wrap: anywhere; }
 .child-profile-card .star-balance { margin-top: 12px; }
 .child-profile-card .star-balance-main { display: flex; align-items: center; gap: 13px; margin: 0; }
@@ -120,9 +120,17 @@
 .child-profiles-template [data-slot=checkbox]:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 .child-profiles-template span { min-width: 0; }
 .child-profiles-template small { display: block; font-weight: normal; }
-.child-profiles-order { padding-left: 20px; }
-.child-profiles-order li { padding: 6px 0; overflow-wrap: anywhere; }
-.child-profiles-order button { margin-left: 6px; }
+/* Selected order: a numbered checklist where each routine is a row with quiet
+   reorder/remove controls (ghost, never the solid green primary). */
+.child-profiles-order { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; counter-reset: order; }
+.child-profiles-order li { counter-increment: order; display: flex; align-items: center; gap: 11px; padding: 9px 10px 9px 11px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface); overflow-wrap: anywhere; }
+.child-profiles-order li::before { content: counter(order); flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: var(--color-action-soft); color: var(--color-action); font-family: var(--font-heading); font-size: 12px; font-weight: 700; }
+.child-profiles-order-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: #293d35; }
+.child-profiles-order-controls { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.child-profiles .child-profiles-order button { min-height: 36px; padding: 0 11px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: transparent; color: var(--color-action); font-size: 13px; font-weight: 600; }
+.child-profiles .child-profiles-order button.child-profiles-order-move { width: 36px; padding: 0; }
+.child-profiles .child-profiles-order button:not(:disabled):hover { background: var(--color-action-soft); border-color: #c7d2bb; filter: none; }
+.child-profiles .child-profiles-order button:disabled { opacity: .4; cursor: default; }
 .child-profiles-actions { justify-content: flex-start; margin-top: 16px; }
 .child-profiles-save:not(:empty) { margin-top: 20px; padding: 16px; border: 1px solid var(--color-field-border); border-radius: var(--radius-control); overflow-wrap: anywhere; }
 .child-profiles-signin { display: block; width: fit-content; margin-top: 12px; background: transparent; color: var(--color-action); }
@@ -151,9 +159,7 @@
 .score-day summary:focus-visible { outline:3px solid var(--color-focus); outline-offset:3px; border-radius: 8px; }
 .score-day form label { margin:8px 0; }
 
-/* Detail page header: quiet back link, name, and sibling-page navigation. */
-.scoring-day-back { display: inline-flex; align-items: center; min-height: 40px; font-size: 13px; font-weight: 600; color: var(--color-muted-ink, #59665e) !important; letter-spacing: -0.01em; }
-.scoring-day-back:hover { color: var(--color-action) !important; }
+/* Detail page header: the back button (see BackLink.tsx), name, and sibling-page navigation. */
 .scoring-day-head { margin: 4px 0 20px; }
 .scoring-day-head h1 { margin: 2px 0 14px; }
 .scoring-day-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
@@ -195,14 +201,13 @@
 .day-stars .star-balance-star { position: relative; display: inline-flex; flex: none; filter: drop-shadow(0 3px 7px rgb(138 104 31 / 36%)); }
 .day-stars .star-balance-glints { inset: -9px; }
 .day-stars .star-balance-figure { display: flex; flex-direction: column; min-width: 0; line-height: 1.04; }
-.day-stars .star-balance-value { font-size: clamp(40px, 12vw, 48px); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; color: #293d35; }
+.day-stars .star-balance-value { font-size: clamp(34px, 9vw, 40px); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; color: #293d35; }
 .day-stars.is-down .star-balance-value { color: #9a5b2b; }
 .day-stars.is-zero .star-balance-value { color: #4f6a55; }
 .day-stars .star-balance-label { margin-top: 5px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a681f; }
-.day-stars-total { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0; margin: 0; padding-left: 18px; border-left: 1px solid rgb(41 61 53 / 12%); text-align: right; }
-.day-stars-total-figure { display: inline-flex; align-items: center; gap: 8px; }
-.day-stars-total .star-balance-star { filter: drop-shadow(0 2px 4px rgb(138 104 31 / 28%)); }
-.day-stars-total-value { font-family: var(--font-heading); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; color: #293d35; }
+.day-stars-total { flex: none; display: flex; align-items: center; gap: 12px; margin: 0; padding-left: 18px; border-left: 1px solid rgb(41 61 53 / 12%); }
+.day-stars-total .star-balance-star { filter: drop-shadow(0 2px 5px rgb(138 104 31 / 30%)); }
+.day-stars-total-value { font-family: var(--font-heading); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; color: #293d35; }
 .day-stars-total .star-balance-label { margin-top: 5px; color: #4f6a55; }
 
 .scoring-day-entries > h2 { margin: 30px 0 12px; }
@@ -233,23 +238,226 @@
 .scoring-day-entries .scoring-day-outcomes button[aria-pressed=true]:not(:disabled):hover { background: #2c4a37; }
 .score-day button[aria-pressed=true]:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 
-/* Prizes page: spendable-balance hero, quiet utility actions, carded history. */
+/* ─── Prizes page ──────────────────────────────────────────────────────────
+   The spendable balance leads in the shared gold-star hero (same language as
+   the child cards and day page); redeeming is a titled panel, and history reads
+   as dated receipt line-items with the star cost as the price. */
 .prizes-page .scoring-day-head { margin-bottom: 4px; }
-.prizes-message { color: var(--color-action); font-weight: 500; }
-.prizes-balance { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 18px 0 22px; padding: 18px 20px; border-radius: 18px; background: var(--color-action-soft); }
-.prizes-balance-figure { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.prizes-balance-label { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #4f6a55; }
-.prizes-balance-value .score-stars { font-size: 30px; line-height: 1; letter-spacing: -0.02em; color: #293d35; }
-.child-profiles button.prizes-reload { flex: none; min-height: 36px; padding: 7px 15px; border: 1px solid #c3d1b9; border-radius: 999px; background: transparent; color: var(--color-action); font-size: 13px; font-weight: 600; }
-.child-profiles button.prizes-reload:not(:disabled):hover { background: #d9e4c9; filter: none; }
-.prizes-form { margin-top: 0 !important; }
-.prizes-history-title { margin-top: 28px; }
-.prizes-empty { padding: 20px; border: 1px dashed var(--color-border); border-radius: 16px; text-align: center; }
-.prizes-history { display: grid; gap: 10px; margin-top: 12px; }
-.prizes-history .prizes-history-row { align-items: center; padding: 15px 18px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); }
-.prizes-history .prizes-history-row.is-voided { background: #f6f5ef; opacity: .82; }
-.prizes-history-row h3 { font-size: 16px; }
-.prizes-history-row p { font-size: 13px; }
-.prizes-voided-note { color: #9a5b2b !important; font-weight: 600; }
+.child-profiles .prizes-message { margin: 14px 0 0; padding: 11px 15px; border-radius: var(--radius-control); background: var(--color-action-soft); color: var(--color-action); font-size: 14px; font-weight: 600; }
+.prizes-loading { margin: 18px 0; }
+
+/* Balance hero: the running spendable total in the gold-star treatment carried
+   across the app, with the quiet reload tucked into the corner. */
+.prizes-hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 0 22px; padding: 20px 22px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); }
+.prizes-hero .star-balance-main { display: flex; align-items: center; gap: 16px; margin: 0; }
+.prizes-hero .star-balance-star { position: relative; display: inline-flex; flex: none; filter: drop-shadow(0 3px 7px rgb(138 104 31 / 36%)); }
+.prizes-hero .star-balance-glints { inset: -9px; }
+.prizes-hero .star-balance-figure { display: flex; flex-direction: column; min-width: 0; line-height: 1.04; }
+.prizes-hero .star-balance-value { font-size: clamp(36px, 10vw, 44px); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; color: #293d35; }
+.prizes-hero .star-balance-label { margin-top: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a681f; }
+.child-profiles button.prizes-reload { flex: none; align-self: flex-start; min-height: 36px; padding: 7px 15px; border: 1px solid #c3d1b9; border-radius: 999px; background: transparent; color: var(--color-action); font-size: 13px; font-weight: 600; }
+.child-profiles button.prizes-reload:not(:disabled):hover { background: var(--color-action-soft); filter: none; }
+.child-profiles button.prizes-reload-standalone { align-self: auto; margin-top: 16px; }
+
+/* Redeem panel: a single surface with a clear title, the live balance-after
+   preview in the action tint, and a confident full-width primary on phones. */
+.prizes-form { margin-top: 16px !important; padding: 20px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); }
+.prizes-form-title { margin: 0 0 4px; font-size: 17px; }
+.prizes-form label { margin-top: 22px; }
+.prizes-form .prizes-note { margin: 10px 0 2px; font-size: 14px; color: #59665e; line-height: 1.5; text-wrap: pretty; }
+.child-profiles .prizes-after { margin: 14px 0 0; display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-radius: var(--radius-control); background: var(--color-action-soft); color: var(--color-action); font-size: 14px; font-weight: 600; }
+.prizes-after .score-stars { color: var(--color-action); }
+.prizes-after .score-stars span { color: var(--color-action); }
+.child-profiles .prizes-form-error { margin: 12px 0 0; color: #9a3b1f; font-weight: 600; font-size: 14px; }
+.child-profiles .prizes-form button.prizes-redeem { width: 100%; min-height: 48px; margin-top: 18px; font-size: 15px; }
+@media (min-width: 460px) { .child-profiles .prizes-form button.prizes-redeem { width: auto; min-width: 168px; } }
+
+/* Pending save: borrow the gold "attention" note from the day page. */
+.prizes-pending { margin: 14px 0 0; padding: 14px 16px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; }
+.prizes-pending p { margin: 0 0 10px; color: #5f4a16; font-weight: 500; }
+
+/* Redemption history: dated receipt rows, star cost as the price. */
+.prizes-history-title { margin-top: 30px; }
+.prizes-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 14px; padding: 30px 24px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); color: #59665e; font-size: 14px; line-height: 1.55; text-align: center; text-wrap: pretty; }
+.prizes-history { display: grid; gap: 10px; margin: 14px 0 0; padding: 0; list-style: none; }
+.prizes-history-row { padding: 15px 17px; border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); }
+.prizes-history-row.is-voided { background: #f7f5ef; }
+.prizes-history-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.prizes-history-row h3 { margin: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+.prizes-history-row.is-voided h3 { color: #6f766d; text-decoration: line-through; text-decoration-color: #bcb6a8; }
+.prizes-cost { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px 5px 9px; border-radius: 999px; background: #f6efd4; color: #5f4a16; font-family: var(--font-heading); font-weight: 700; }
+.prizes-cost .star-balance-star { display: inline-flex; filter: drop-shadow(0 1px 2px rgb(138 104 31 / 32%)); }
+.prizes-cost-value { font-size: 15px; line-height: 1; font-variant-numeric: tabular-nums; }
+.prizes-history-row.is-voided .prizes-cost { background: #ece9e1; color: #8a8f87; }
+.prizes-history-row.is-voided .prizes-cost .star-balance-star { filter: grayscale(0.7) opacity(0.7); }
+.child-profiles .prizes-history-meta { margin: 6px 0 0; font-size: 13px; color: #59665e; }
+.prizes-history-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+.prizes-history-row.is-voided .prizes-history-foot { justify-content: flex-start; }
+.prizes-voided-badge { display: inline-block; padding: 4px 11px; border-radius: 999px; background: #efe6d8; color: #8a5a2b; font-size: 12px; font-weight: 600; }
 .child-profiles button.prizes-void { flex: none; min-height: 38px; padding: 8px 14px; border: 1px solid #e0c3b7; border-radius: var(--radius-control); background: transparent; color: #9a3b1f; font-size: 13px; font-weight: 600; }
 .child-profiles button.prizes-void:not(:disabled):hover { background: #f8ebe5; filter: none; }
+
+/* ─── Assignments page ───────────────────────────────────────────────────────
+   A child's routines are a dated plan: what's live today and what takes effect
+   on the next Jakarta day. The schedule reads as a two-stop timeline (current →
+   scheduled), then a single editor panel changes it. */
+.assignments-page .assign-intro { margin: -2px 0 0; max-width: 54ch; font-size: 14px; line-height: 1.5; color: #59665e; text-wrap: pretty; }
+
+/* Schedule timeline: today and tomorrow as two stops on a connecting rail, the
+   routines shown as pills. Tomorrow carries the emphasis — it's what an edit sets. */
+.assign-schedule { margin: 18px 0 22px; padding: 20px 22px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); }
+.assign-node { display: grid; grid-template-columns: 20px 1fr; gap: 14px; }
+.assign-node.is-today { padding-bottom: 20px; }
+.assign-node-rail { position: relative; display: flex; justify-content: center; padding-top: 3px; }
+.assign-node-dot { position: relative; z-index: 1; width: 13px; height: 13px; border-radius: 50%; background: var(--color-action); box-shadow: 0 0 0 4px var(--color-surface); }
+.assign-node.is-tomorrow .assign-node-dot { background: var(--color-surface); border: 2.5px solid var(--color-action); }
+.assign-node.is-today .assign-node-rail::after { content: ''; position: absolute; top: 18px; bottom: -40px; left: 50%; width: 2px; transform: translateX(-50%); background: var(--color-border); border-radius: 2px; }
+.assign-node-body { min-width: 0; padding-top: 1px; }
+.assign-node-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 9px; }
+.assign-node-when { font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #52644f; }
+.assign-node.is-tomorrow .assign-node-when { color: var(--color-action); }
+.assign-node-date { font-size: 12.5px; color: #6c7a6e; font-variant-numeric: tabular-nums; }
+.assign-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.assign-chip { padding: 5px 12px; border-radius: 999px; background: #eef1e8; color: #34463c; font-size: 13px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.assign-node.is-tomorrow .assign-chip { background: var(--color-action-soft); color: #2c4a37; }
+.assignments-page .assign-empty { display: inline-block; font-size: 13.5px; color: #7c8379; }
+.assign-node-note { display: inline-block; margin-top: 9px; font-size: 12px; font-weight: 600; letter-spacing: 0.01em; color: #8a8f87; }
+
+/* Editor panel (the <form> already carries the Family Notebook card from
+   .score-day form; widen its radius to match the schedule above). */
+.assignments-page form { margin: 0; padding: 20px 22px; border-radius: 22px; }
+.assignments-page .assign-editor-title { margin: 0 0 16px; font-size: 17px; }
+
+/* Start-today option: a control row that fills with the action tint when on. */
+.assignments-page .assign-toggle { display: flex; align-items: flex-start; gap: 12px; margin: 0; padding: 13px 15px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface); font-weight: 400; cursor: pointer; transition: background-color .15s ease, border-color .15s ease; }
+.assignments-page .assign-toggle:has([data-slot=checkbox][data-checked]) { background: var(--color-action-soft); border-color: #bcd0ab; }
+.assignments-page .assign-toggle [data-slot=checkbox] { flex: none; width: 20px; height: 20px; margin-top: 1px; border: 1px solid var(--color-field-border); background: white; }
+.assignments-page .assign-toggle [data-slot=checkbox][data-checked] { background: var(--color-action); border-color: var(--color-action); color: white; }
+.assignments-page .assign-toggle [data-slot=checkbox]:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.assign-toggle-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.assign-toggle-title { font-weight: 650; font-size: 14.5px; color: #293d35; }
+.assignments-page .assign-toggle small { font-weight: 400; font-size: 13px; line-height: 1.45; color: #59665e; overflow-wrap: anywhere; }
+
+/* Takes-effect note: the household date in the gold "warmth, never action" accent. */
+.assignments-page .assign-effective { display: flex; align-items: center; gap: 10px; margin: 22px 0 0; padding: 12px 15px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; color: #5f4a16; font-size: 13.5px; line-height: 1.45; }
+.assignments-page .assign-effective svg { flex: none; color: #8a681f; }
+.assignments-page .assign-effective time { font-weight: 700; color: #4a3a12; font-variant-numeric: tabular-nums; }
+
+.assignments-page form button.assign-save { width: 100%; min-height: 48px; margin-top: 20px; font-size: 15px; }
+@media (min-width: 460px) { .assignments-page form button.assign-save { width: auto; min-width: 184px; } }
+
+.assignments-page .assign-archived { margin: 0; padding: 13px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: #f7f5ef; color: #59665e; font-size: 14px; line-height: 1.5; }
+
+/* ─── Templates library ──────────────────────────────────────────────────────
+   Reusable routines. The index reads as linked cards (the whole card opens its
+   editor page); create and edit are full pages now, not a modal. */
+.templates-heading { align-items: flex-start; }
+.templates-list h1 { margin: 0; font-size: clamp(30px, 8vw, 38px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 700; }
+.templates-list .templates-intro { margin: 10px 0 0; max-width: 52ch; font-size: 14px; line-height: 1.5; color: #59665e; text-wrap: pretty; }
+
+/* Create: the single green primary, as a link styled to the app's primary buttons. */
+a.templates-create { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 18px 0 15px; border-radius: var(--radius-control); background: var(--color-action); color: #fff; font-size: 14px; font-weight: 650; text-decoration: none; white-space: nowrap; box-shadow: 0 2px 8px rgb(54 88 66 / 18%); transition: background-color .15s ease; }
+a.templates-create:hover { background: #2c4a37; }
+a.templates-create:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+
+.templates-list .templates-saved { margin: 18px 0 0; padding: 12px 15px; border-radius: var(--radius-control); background: var(--color-action-soft); color: var(--color-action); font-size: 14px; font-weight: 600; }
+
+.templates-cards { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+a.template-card { display: flex; align-items: center; gap: 14px; padding: 17px 16px 17px 20px; border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); color: #293d35; text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease; }
+a.template-card:hover { border-color: var(--color-field-border); box-shadow: 0 6px 18px rgb(25 44 34 / 7%); }
+a.template-card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.template-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.template-card-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.template-card-name { font-family: var(--font-heading); font-size: 18px; font-weight: 650; letter-spacing: -0.2px; line-height: 1.25; color: #293d35; overflow-wrap: anywhere; }
+.template-card-count { flex: none; font-size: 12px; font-weight: 600; color: #6c7a6e; font-variant-numeric: tabular-nums; }
+.template-card-activities { margin: 0; font-size: 13.5px; line-height: 1.5; color: #59665e; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.template-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1px; }
+.template-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 650; letter-spacing: 0.01em; }
+.template-tag.is-scheduled { background: var(--color-action-soft); color: #2c4a37; }
+.template-tag.is-retiring, .template-tag.is-retired { background: #f1ece2; color: #7a6a4a; }
+.template-card-chevron { flex: none; color: #9aa69a; transition: transform .15s ease, color .15s ease; }
+a.template-card:hover .template-card-chevron { color: var(--color-action); transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { a.template-card:hover .template-card-chevron { transform: none; } }
+
+.templates-empty { margin: 24px 0 0; padding: 40px 28px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); text-align: center; }
+.templates-empty .templates-empty-title { margin: 0; font-family: var(--font-heading); font-size: 18px; font-weight: 650; color: #293d35; }
+.templates-empty p:not(.templates-empty-title) { margin: 8px auto 0; max-width: 34ch; font-size: 14px; line-height: 1.5; color: #59665e; text-wrap: pretty; }
+a.templates-empty-create { margin-top: 20px; }
+
+/* ─── Template editor (create / edit) ─────────────────────────────────────────
+   Mirrors the assignments page: a dated schedule timeline above a single editor
+   card. Activities are a collapsible list; weekdays are toggle chips. */
+.templates-editor .tpl-intro { margin: -2px 0 0; max-width: 54ch; font-size: 14px; line-height: 1.5; color: #59665e; text-wrap: pretty; }
+.templates-editor .assign-schedule { margin: 18px 0 20px; }
+.templates-editor .assign-empty { display: inline-block; font-size: 13.5px; color: #7c8379; }
+.templates-editor .tpl-affected { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--color-border); font-size: 13.5px; color: #59665e; }
+.templates-editor .tpl-affected strong { color: #34463c; font-weight: 650; }
+
+.templates-editor form { margin: 0; padding: 20px 20px 22px; border-radius: 22px; }
+.templates-editor .tpl-name { margin: 0; font-weight: 600; font-size: 14px; }
+.templates-editor .tpl-activities-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 24px 0 10px; }
+.templates-editor .tpl-section-title { margin: 0; font-size: 15px; font-weight: 650; }
+.templates-editor .tpl-activities-count { font-size: 12px; font-weight: 600; color: #6c7a6e; font-variant-numeric: tabular-nums; }
+
+/* Activity rows: a collapsible card list. Collapsed shows name + reward/day summary;
+   expanded reveals the fields. One open at a time keeps a 30-activity template legible. */
+.templates-editor .tpl-activities { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.tpl-activity { border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); overflow: hidden; transition: border-color .15s ease, box-shadow .15s ease; }
+.tpl-activity[data-open] { border-color: #c7d2bb; box-shadow: 0 4px 14px rgb(25 44 34 / 6%); }
+.child-profiles.templates-editor button.tpl-activity-summary { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; margin: 0; padding: 11px 14px; border: 0; border-radius: 0; background: transparent; color: #293d35; text-align: left; font: inherit; }
+.child-profiles.templates-editor button.tpl-activity-summary:not(:disabled):hover { background: #faf9f3; filter: none; }
+.tpl-activity-index { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--color-action-soft); color: var(--color-action); font-family: var(--font-heading); font-size: 13px; font-weight: 700; }
+.tpl-activity-head { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tpl-activity-name { font-weight: 650; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.tpl-activity-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: #6c7a6e; }
+.tpl-activity-meta .tpl-reward { color: #5f4a16; font-weight: 650; font-variant-numeric: tabular-nums; }
+.tpl-activity-caret { flex: none; color: #9aa69a; transition: transform .2s ease, color .2s ease; }
+.tpl-activity[data-open] .tpl-activity-caret { transform: rotate(180deg); color: var(--color-action); }
+@media (prefers-reduced-motion: reduce) { .tpl-activity-caret { transition: none; } }
+.tpl-activity-fields { padding: 2px 14px 16px; }
+.tpl-activity-fields label { margin-top: 14px; font-size: 14px; }
+.tpl-points { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 360px) { .tpl-points { grid-template-columns: 1fr; } }
+
+/* Weekday chips: toggle pills, green fill when on (the app's selectable-chip language). */
+.tpl-weekdays { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+.child-profiles.templates-editor button.tpl-day { min-height: 38px; min-width: 46px; margin: 0; padding: 0 10px; border: 1px solid var(--color-field-border); border-radius: 999px; background: #fff; color: #44524a; font-size: 13px; font-weight: 600; }
+.child-profiles.templates-editor button.tpl-day:not(:disabled):hover { background: var(--color-action-soft); border-color: #bcd0ab; filter: none; }
+.child-profiles.templates-editor button.tpl-day[aria-pressed=true] { background: var(--color-action); border-color: var(--color-action); color: #fff; }
+.child-profiles.templates-editor button.tpl-day[aria-pressed=true]:not(:disabled):hover { background: #2c4a37; }
+.child-profiles.templates-editor button.tpl-day:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+
+/* Activity controls: quiet ghost buttons (never the green primary). */
+.tpl-activity-controls { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+.child-profiles.templates-editor button.tpl-move { width: 40px; min-height: 38px; margin: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--color-border); background: transparent; color: var(--color-action); }
+.child-profiles.templates-editor button.tpl-move:not(:disabled):hover { background: var(--color-action-soft); border-color: #c7d2bb; filter: none; }
+.child-profiles.templates-editor button.tpl-remove { margin: 0 0 0 auto; min-height: 38px; display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; border: 1px solid #e0c3b7; background: transparent; color: #9a3b1f; font-size: 13px; font-weight: 600; }
+.child-profiles.templates-editor button.tpl-remove:not(:disabled):hover { background: #f8ebe5; filter: none; }
+
+.tpl-add-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.child-profiles.templates-editor button.tpl-add { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; margin: 0; border: 1px dashed var(--color-field-border); background: transparent; color: var(--color-action); font-weight: 650; }
+.child-profiles.templates-editor button.tpl-add:not(:disabled):hover { background: var(--color-action-soft); border-style: solid; filter: none; }
+.child-profiles.templates-editor button.tpl-retire { min-height: 44px; margin: 0 0 0 auto; border: 1px solid #e0c3b7; background: transparent; color: #9a3b1f; font-weight: 600; }
+.child-profiles.templates-editor button.tpl-retire:not(:disabled):hover { background: #f8ebe5; filter: none; }
+
+.templates-editor .tpl-retire-note { margin: 18px 0 0; padding: 13px 15px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; color: #5f4a16; font-size: 13.5px; line-height: 1.5; }
+.templates-editor .tpl-retire-note time { font-weight: 700; color: #4a3a12; }
+
+/* Takes-effect note: household date in the gold "warmth, never action" accent. */
+.templates-editor .tpl-effective { display: flex; align-items: center; gap: 10px; margin: 22px 0 0; padding: 12px 15px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; color: #5f4a16; font-size: 13.5px; line-height: 1.45; }
+.templates-editor .tpl-effective svg { flex: none; color: #8a681f; }
+.templates-editor .tpl-effective time { font-weight: 700; color: #4a3a12; font-variant-numeric: tabular-nums; }
+
+.tpl-save-row { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.child-profiles.templates-editor button.tpl-save { width: 100%; min-height: 48px; margin: 0; font-size: 15px; }
+.child-profiles.templates-editor button.tpl-cancel { width: 100%; min-height: 48px; margin: 0; border: 1px solid var(--color-field-border); background: transparent; color: var(--color-action); font-weight: 600; }
+.child-profiles.templates-editor button.tpl-cancel:not(:disabled):hover { background: var(--color-action-soft); filter: none; }
+@media (min-width: 460px) {
+  .tpl-save-row { flex-direction: row; align-items: center; }
+  .child-profiles.templates-editor button.tpl-save { width: auto; min-width: 184px; }
+  .child-profiles.templates-editor button.tpl-cancel { width: auto; min-width: 140px; }
+}
+.templates-editor .tpl-validation { margin: 14px 0 0; color: #9a3b1f; font-weight: 600; font-size: 14px; }
+.templates-editor .tpl-savestatus { margin: 16px 0 0; color: #59665e; }
+.templates-editor .tpl-loading, .templates-editor .tpl-loaderror { margin-top: 18px; }
+.templates-editor .tpl-conflict-mine { margin-top: 12px; }
