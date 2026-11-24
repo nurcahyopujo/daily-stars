@@ -5,7 +5,11 @@ const testServerEnv = { DAILY_STARS_D1_PATH: testDatabasePath };
 
 export default defineConfig({
   testDir: './tests/browser',
-  fullyParallel: true,
+  // The suite shares one local SQLite file across all tests (see
+  // tests/browser/database.ts), so parallel workers contend on it and seeding
+  // intermittently throws. Run serially — this is what the DB design requires.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   use: {

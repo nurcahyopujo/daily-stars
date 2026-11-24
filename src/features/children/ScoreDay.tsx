@@ -260,8 +260,6 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
       });
       outstanding.delete(child.id);
       setPending(null);
-      setDraft(null);
-      setConfirm(false);
       return await reconcile(atPath);
     } catch (e) {
       if (e instanceof RequestError && e.status >= 400 && e.status < 500 && e.status !== 401) {
@@ -527,6 +525,10 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
                       ...(draft.stream ? { expectedRevision: draft.revision } : {}),
                     }).then((fresh) => {
                       if (!fresh) return;
+                      // This submit owns the modal, so close it only on its own
+                      // success — not from send(), which also runs for outcome taps.
+                      setDraft(null);
+                      setConfirm(false);
                       // Edit knows its stream; a new entry is the one-off stream
                       // the server added that wasn't present before.
                       const stream =
@@ -538,7 +540,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
                     });
                   }}
                 >
-                  <fieldset disabled={busy || !!pending}>
+                  <fieldset disabled={!!pending}>
                     <DialogHeader className="modal-head">
                       <DialogTitle className="modal-title">
                         {draft.stream ? 'Correct entry' : draft.sign === 1 ? 'Add stars' : 'Deduct stars'}
