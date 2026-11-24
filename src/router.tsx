@@ -7,6 +7,9 @@ import { TemplateList } from './features/children/TemplateList';
 import { TemplateEditor } from './features/children/TemplateEditor';
 import { ChildDayRoute, ChildPrizesRoute, ChildReviewRoute, ChildAssignmentsRoute } from './features/children/child-routes';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
+import { PrizeList } from './features/prizes/PrizeList';
+import { PrizeEditor } from './features/prizes/PrizeEditor';
+import { lastPrizeQuery, parsePrizeQuery } from './features/prizes/prize-query';
 
 function HomePage() {
   const { sessionExpired } = useSession();
@@ -51,6 +54,31 @@ function TemplateEditPage() {
     onSaved={() => void navigate({ to: '/templates' })} />;
 }
 
+const prizeListApi = getRouteApi('/prizes');
+function PrizeListPage() {
+  const query = prizeListApi.useSearch();
+  const { sessionExpired } = useSession();
+  const navigate = useNavigate();
+  return <PrizeList query={query} onSessionExpired={sessionExpired}
+    onQueryChange={(next) => void navigate({ to: '/prizes', search: next, replace: true })} />;
+}
+
+function PrizeCreatePage() {
+  const { sessionExpired } = useSession();
+  const navigate = useNavigate();
+  return <PrizeEditor target={{ kind: 'create' }} onSessionExpired={sessionExpired}
+    onSaved={() => void navigate({ to: '/prizes', search: lastPrizeQuery() })} />;
+}
+
+const prizeEditApi = getRouteApi('/prizes/$prizeId');
+function PrizeEditPage() {
+  const { prizeId } = prizeEditApi.useParams();
+  const { sessionExpired } = useSession();
+  const navigate = useNavigate();
+  return <PrizeEditor key={prizeId} target={{ kind: 'edit', id: prizeId }} onSessionExpired={sessionExpired}
+    onSaved={() => void navigate({ to: '/prizes', search: lastPrizeQuery() })} />;
+}
+
 // A selected activity date is a view selection, not a page: a validated search param.
 const dateSearch = (search: Record<string, unknown>): { date?: string } => {
   const { date } = search;
@@ -72,6 +100,9 @@ const routeTree = rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: '/templates', component: TemplateListPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/templates/new', component: TemplateCreatePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/templates/$templateId', component: TemplateEditPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/prizes', validateSearch: parsePrizeQuery, component: PrizeListPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/prizes/new', component: PrizeCreatePage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/prizes/$prizeId', component: PrizeEditPage }),
 ]);
 
 export const router = createRouter({ routeTree, trailingSlash: 'never' });

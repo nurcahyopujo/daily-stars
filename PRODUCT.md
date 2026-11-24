@@ -28,7 +28,7 @@ Parents use an English-language phone web app. The household calendar uses Asia/
 - Scheduled activities support rewards, optional penalties, weekdays, and dated rule changes. One-off awards and deductions require a reason.
 - Parents can correct scores and one-off entries; history preserves earlier revisions and the acting parent.
 - The MVP has no child accounts, public registration, push notifications, or offline entry.
-- Parents redeem prizes by entering a label and star cost. Available balances account for spending, and voiding a redemption returns the stars.
+- Parents keep a household prize list (name, star cost, one-time or repeatable, optional store link and image address) that they can search, filter, and sort. They redeem a prize from the list or by entering a label and star cost. Available balances account for spending, and voiding a redemption returns the stars.
 - Family records remain out of browser storage. The app uses network-only data and keeps uncertain save recovery state in memory while the page remains open.
 - The implementation follows the approved [MVP specification](mvp-spec.md) and [domain glossary](GLOSSARY.md). Current feature availability is tracked in the spec's milestones and the [README](README.md).
 

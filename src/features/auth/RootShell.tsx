@@ -11,15 +11,19 @@ import { TemplateEditor } from '../children/TemplateEditor';
 import { ChildAssignments } from '../children/ChildAssignments';
 import { ruleRecovery, useChildSave, useRuleSave } from '../children/requests';
 import { clearAll, resume as resumeSaves } from '../children/pending-save';
+import { PrizeEditor } from '../prizes/PrizeEditor';
+import { prizeRecovery, usePrizeSave } from '../prizes/prize-requests';
 
 const pages = [
   { id: 'home', label: 'Home', path: '/' },
   { id: 'templates', label: 'Activity templates', path: '/templates' },
+  { id: 'prizes', label: 'Prizes', path: '/prizes' },
   { id: 'profile', label: 'Profile', path: '/profile' },
 ] as const;
 
 function activePage(pathname: string) {
   if (pathname.startsWith('/templates')) return 'templates';
+  if (pathname.startsWith('/prizes')) return 'prizes';
   if (pathname.startsWith('/profile')) return 'profile';
   // Home hosts the children list, so '/', '/home' and every '/children…' page belong to it.
   return 'home';
@@ -38,7 +42,9 @@ export function RootShell() {
   // Which editor, if any, a locked rule save belongs to — the intent-path parsing that
   // screens used to duplicate now lives behind one shared helper.
   const recovery = ruleRecovery(ruleSave);
-  const saveLocked = childSaveLocked || recovery !== null;
+  const prizeSave = usePrizeSave();
+  const prizeLock = prizeRecovery(prizeSave);
+  const saveLocked = childSaveLocked || recovery !== null || prizeLock !== null;
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signInPath = useRouterState({ select: (state) => state.location.href });
   const menu = activePage(pathname);
@@ -120,7 +126,7 @@ export function RootShell() {
         <PopoverContent align="end" sideOffset={8} className="parent-navigation">
         <nav aria-label="Main menu">
           {pages.map((page) => {
-            const disabled = saveLocked || (page.id === 'templates' && session.status !== 'signed-in');
+            const disabled = saveLocked || ((page.id === 'templates' || page.id === 'prizes') && session.status !== 'signed-in');
             const current = menu === page.id ? 'page' : undefined;
             if (disabled) {
               return <a key={page.id} href={page.path} aria-current={current} aria-disabled="true"
@@ -141,7 +147,7 @@ export function RootShell() {
           {session.status === 'sign-in-required' && <>
             <h2>Sign in to continue</h2>
             <p>Use your approved parent email to open Daily Stars.</p>
-            {(childSave.status === 'uncertain' || ruleSave.status === 'uncertain') && <p>Save not confirmed. Keep this page open to retain its retry key. Reopening the app discards it.</p>}
+            {(childSave.status === 'uncertain' || ruleSave.status === 'uncertain' || prizeSave.status === 'uncertain') && <p>Save not confirmed. Keep this page open to retain its retry key. Reopening the app discards it.</p>}
             <Button type="button" onClick={() => setAttempt(attempt + 1)}>Check access</Button>
             <a className="parent-access-button" href={signInPath}>Sign in</a>
           </>}
@@ -159,6 +165,8 @@ export function RootShell() {
         ? <ChildAssignments childId={assignmentLockChildId} onSessionExpired={sessionExpired} />
       : templateLockTarget && pathname !== templateEditorPath
         ? <TemplateEditor target={templateLockTarget} onSessionExpired={sessionExpired} />
+      : prizeLock && pathname !== prizeLock.editorPath
+        ? <PrizeEditor target={prizeLock.target} onSessionExpired={sessionExpired} />
       : childSaveLocked && !onChildrenSurface
         ? <ChildProfiles onSessionExpired={sessionExpired} />
       : <Outlet />}

@@ -1,0 +1,84 @@
+/* ─── Prize catalog ──────────────────────────────────────────────────────────
+   Builds on the templates library: same heading, create link and empty state.
+   Prizes read as photo cards; the product photo loads from the store. */
+
+/* Product photo or star placeholder. */
+.prize-image { flex: none; display: grid; place-items: center; overflow: hidden; border-radius: 14px; background: #f6efd4; }
+.prize-image img { width: 100%; height: 100%; object-fit: cover; }
+.prize-image.is-card { width: 100%; aspect-ratio: 1; border-radius: 16px 16px 0 0; }
+.prize-image.is-thumb { width: 52px; height: 52px; border-radius: 12px; }
+.prize-image.is-preview { width: 76px; height: 76px; }
+.prize-image:not(.is-placeholder) { background: #fff; }
+
+/* Search, filters and sort. */
+.catalog-tools { margin: 22px 0 0; display: grid; gap: 12px; }
+.child-profiles .catalog-search { position: relative; display: block; margin: 0; }
+.child-profiles .catalog-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c7a6e; pointer-events: none; }
+.child-profiles .catalog-search input { margin: 0; padding-left: 40px; }
+.catalog-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) { .catalog-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.child-profiles .catalog-filters label { margin: 0; font-size: 12px; font-weight: 650; color: #59665e; letter-spacing: 0.01em; }
+.child-profiles .catalog-filters button[data-slot=select-trigger] { margin-top: 5px; padding: 0 12px; font-size: 14px; color: #293d35; letter-spacing: normal; }
+.catalog .catalog-count { margin: 18px 0 0; font-size: 13px; font-weight: 600; color: #6c7a6e; font-variant-numeric: tabular-nums; }
+.child-profiles button.catalog-clear { margin-top: 18px; border: 1px solid var(--color-field-border); background: transparent; color: var(--color-action); }
+
+/* Cards: the name link stretches over the whole card; the store link sits above it. */
+.catalog-cards { margin: 12px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 640px) { .catalog-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.catalog-card { position: relative; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-surface); transition: border-color .15s ease, box-shadow .15s ease; }
+.catalog-card:hover { border-color: var(--color-field-border); box-shadow: 0 6px 18px rgb(25 44 34 / 7%); }
+.catalog-card:has(.catalog-card-open:focus-visible) { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.catalog-card.is-archived .prize-image { filter: grayscale(0.8) opacity(0.7); }
+.catalog-card-body { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 12px 13px 14px; min-width: 0; }
+.catalog .catalog-card-name, .catalog-card-name { margin: 0; font-family: var(--font-heading); font-size: 15.5px; font-weight: 650; line-height: 1.3; color: #293d35; overflow-wrap: anywhere; }
+a.catalog-card-open { color: inherit; text-decoration: none; outline: none; }
+a.catalog-card-open::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.catalog-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.catalog-card-meta .prizes-cost { padding: 4px 10px 4px 8px; }
+.catalog-tag { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 650; }
+.catalog-tag.is-once { background: var(--color-action-soft); color: #2c4a37; }
+.catalog-tag.is-archived { background: #f1ece2; color: #7a6a4a; }
+a.catalog-card-store { position: relative; z-index: 1; align-self: flex-start; margin-top: auto; display: inline-flex; align-items: center; gap: 5px; min-height: 32px; font-size: 13px; font-weight: 600; color: var(--color-action); text-underline-offset: 3px; }
+a.catalog-card-store:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; border-radius: 6px; }
+
+/* Editor. */
+.catalog-editor form label { margin-top: 18px; font-size: 14px; }
+.catalog-editor form label:first-of-type { margin-top: 0; }
+.catalog-optional { font-weight: 400; color: #6c7a6e; }
+.child-profiles fieldset.catalog-kind { margin: 20px 0 0; display: grid; gap: 8px; }
+.catalog-kind legend { margin-bottom: 8px; font-size: 14px; }
+.child-profiles .catalog-kind label { display: flex; align-items: flex-start; gap: 11px; margin: 0; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: #fff; font-weight: 400; cursor: pointer; }
+.child-profiles .catalog-kind label:has(input:checked) { border-color: var(--color-action); background: var(--color-action-soft); }
+.child-profiles .catalog-kind input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--color-action); }
+.catalog-kind strong { display: block; font-size: 14px; color: #293d35; }
+.catalog-kind small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.45; color: #59665e; }
+.catalog-help { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: #59665e; text-wrap: pretty; }
+.catalog-preview { display: flex; align-items: center; gap: 14px; margin-top: 16px; padding: 12px; border: 1px dashed var(--color-border); border-radius: 16px; background: #fff; }
+.catalog-preview-body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.child-profiles.templates-editor button.catalog-archive { margin: 0; }
+
+/* Redeem page: choose from the catalog or name a prize on the spot. */
+.redeem-mode { display: flex; gap: 6px; margin-top: 14px; padding: 4px; border-radius: 999px; background: #f1efe6; }
+.child-profiles .redeem-mode button { flex: 1; min-height: 38px; margin: 0; border: 0; border-radius: 999px; background: transparent; color: #44524a; font-size: 13.5px; font-weight: 600; }
+.child-profiles .redeem-mode button:not(:disabled):hover { filter: none; background: #e9e6da; }
+.child-profiles .redeem-mode button[aria-pressed=true] { background: #fff; color: var(--color-action); box-shadow: 0 1px 4px rgb(25 44 34 / 12%); }
+.child-profiles fieldset.redeem-choices { margin: 16px 0 0; display: grid; gap: 8px; }
+.redeem-tools { display: grid; gap: 10px; margin-top: 16px; }
+@media (min-width: 460px) { .redeem-tools { grid-template-columns: minmax(0, 1fr) 170px; align-items: end; } }
+.child-profiles .redeem-tools label { margin: 0; font-size: 12px; font-weight: 650; color: #59665e; }
+.child-profiles .redeem-tools button[data-slot=select-trigger] { margin-top: 5px; padding: 0 12px; font-size: 14px; color: #293d35; }
+@media (min-width: 460px) { .child-profiles .redeem-tools .catalog-search input { min-height: 44px; } }
+.child-profiles .redeem-none { margin: 16px 0 0; }
+.redeem-more { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: 13px; font-weight: 600; color: #6c7a6e; font-variant-numeric: tabular-nums; }
+.child-profiles .redeem-more button { min-height: 40px; margin: 0; border: 1px solid var(--color-field-border); background: transparent; color: var(--color-action); font-size: 13.5px; }
+.child-profiles .redeem-more button:not(:disabled):hover { background: var(--color-action-soft); filter: none; }
+.child-profiles .redeem-choices label { display: flex; align-items: center; gap: 12px; margin: 0; padding: 9px 12px 9px 9px; border: 1px solid var(--color-border); border-radius: 14px; background: #fff; font-weight: 400; cursor: pointer; }
+.child-profiles .redeem-choices label:has(input:checked) { border-color: var(--color-action); background: var(--color-action-soft); }
+.child-profiles .redeem-choices label:has(input:disabled) { cursor: not-allowed; background: #f7f5ef; }
+.child-profiles .redeem-choices label:has(input:disabled) .prize-image { filter: grayscale(0.7) opacity(0.7); }
+.child-profiles .redeem-choices input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--color-action); }
+.redeem-choice-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.redeem-choice-name { font-weight: 650; font-size: 14.5px; line-height: 1.3; color: #293d35; overflow-wrap: anywhere; }
+.redeem-choice-note { font-size: 12.5px; color: #6c7a6e; }
+.redeem-choice-note.is-blocked { color: #8a5a2b; font-weight: 600; }
+.redeem-choices .prizes-cost { padding: 4px 10px 4px 8px; }
