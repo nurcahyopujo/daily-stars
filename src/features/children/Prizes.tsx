@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Link } from '@tanstack/react-router';
 import { BackLabel, backLinkClass } from './BackLink';
 import { useState } from 'react';
@@ -10,7 +9,12 @@ import { useSaveFlow } from './save-flow';
 import { StarBalance, GoldStar, Stars } from './StarBalance';
 import type { CatalogChoice } from '../../../shared/prizes';
 import { PrizeImage } from '../prizes/PrizeImage';
-import { PrizeCost } from '../prizes/PrizeList';
+import { FilterSelect, PrizeCost, type Option } from '../prizes/PrizeList';
+import { blockedReason, filterChoices, REDEEM_PAGE } from '../prizes/prize-query';
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
+
+const SHOW_OPTIONS: Option<'all' | 'available'>[] = [{ value: 'all', label: 'All prizes' }, { value: 'available', label: 'Can redeem now' }];
 import '../prizes/prize-catalog.css';
 
 type Account = {
@@ -18,13 +22,6 @@ type Account = {
   history: { id: string; label: string; cost: number; recorded: string; voided: string | null }[];
   catalog: CatalogChoice[];
 };
-
-/** Why a catalog prize can't be redeemed for this child right now, if anything. */
-function blockedReason(choice: CatalogChoice, balance: number): string | null {
-  if (choice.oneTime && choice.redeemed) return 'Already redeemed';
-  if (choice.cost > balance) return `Needs ${choice.cost - Math.max(0, balance)} more ${choice.cost - Math.max(0, balance) === 1 ? 'star' : 'stars'}`;
-  return null;
-}
 type Action = { path: string; method: string; body: object };
 
 // Redemptions are stamped in the household's Jakarta day; show the date and time
@@ -40,6 +37,9 @@ export function Prizes({ child }: { child: Child }) {
   const [message, setMessage] = useState('');
   const [mode, setMode] = useState<'catalog' | 'custom' | null>(null);
   const [prizeId, setPrizeId] = useState('');
+  const [search, setSearch] = useState('');
+  const [show, setShow] = useState<'all' | 'available'>('all');
+  const [limit, setLimit] = useState(REDEEM_PAGE);
   const account = useResource<Account>(path, { onError: () => setMessage('Could not load prizes. Try reloading.') });
   // Redemptions carry their idempotency in the URL (a per-redeem UUID, or the
   // redemption id for a void), so the request repeats safely on retry without an
@@ -78,7 +78,12 @@ export function Prizes({ child }: { child: Child }) {
   const catalog = account.data?.catalog ?? [];
   // Default to the catalog when it has prizes; the parent can switch to naming one.
   const activeMode = catalog.length === 0 ? 'custom' : mode ?? 'catalog';
-  const chosen = catalog.find(choice => choice.id === prizeId && !blockedReason(choice, account.data?.balance ?? 0));
+  const balanceNow = account.data?.balance ?? 0;
+  const matches = filterChoices(catalog, balanceNow, search, show === 'available');
+  const visible = matches.slice(0, limit);
+  // Only a prize the parent can still see counts as chosen, so a hidden pick is never redeemed.
+  const chosen = visible.find(choice => choice.id === prizeId && !blockedReason(choice, balanceNow));
+  const narrow = (apply: () => void) => { apply(); setLimit(REDEEM_PAGE); setPrizeId(''); };
   return <section className="child-profiles score-day prizes-page">
     {!pending && <Link className={backLinkClass} to="/children/$childId" params={{ childId: child.id }}><BackLabel>{child.displayName}</BackLabel></Link>}
     <header className="scoring-day-head"><h1>{child.displayName} · Prizes</h1></header>
@@ -108,9 +113,20 @@ export function Prizes({ child }: { child: Child }) {
                   <Button type="button" aria-pressed={activeMode === 'custom'} onClick={() => setMode('custom')}>Something else</Button>
                 </div>}
                 {activeMode === 'catalog' ? <>
-                  <fieldset className="redeem-choices">
+                  {catalog.length > REDEEM_PAGE && <div className="redeem-tools" role="search" aria-label="Find a prize">
+                    <label className="catalog-search">
+                      <span className="sr-only">Search prizes</span>
+                      <Search size={17} aria-hidden="true" />
+                      <Input type="search" placeholder="Search prizes" value={search} maxLength={160}
+                        onChange={event => { const next = event.target.value; narrow(() => setSearch(next)); }} />
+                    </label>
+                    <FilterSelect label="Show" options={SHOW_OPTIONS} value={show} onChange={next => narrow(() => setShow(next))} />
+                  </div>}
+                  {matches.length === 0
+                    ? <p className="prizes-note redeem-none" role="status">No matching prizes. Try another search{show === 'available' ? ' or show all prizes' : ''}.</p>
+                    : <fieldset className="redeem-choices">
                     <legend className="sr-only">Prize</legend>
-                    {catalog.map(choice => {
+                    {visible.map(choice => {
                       const reason = blockedReason(choice, account.data!.balance);
                       return <label key={choice.id}>
                         <input type="radio" name="redeem-prize" value={choice.id} disabled={Boolean(reason)}
@@ -123,7 +139,13 @@ export function Prizes({ child }: { child: Child }) {
                         <PrizeCost cost={choice.cost} />
                       </label>;
                     })}
-                  </fieldset>
+                  </fieldset>}
+                  {matches.length > visible.length && <div className="redeem-more">
+                    <span role="status">Showing {visible.length} of {matches.length}</span>
+                    <Button type="button" onClick={() => setLimit(count => count + REDEEM_PAGE)}>
+                      Show {Math.min(REDEEM_PAGE, matches.length - visible.length)} more
+                    </Button>
+                  </div>}
                   {chosen && <p className="prizes-after">Balance after redemption <Stars value={account.data.balance - chosen.cost}/></p>}
                   <Button type="submit" className="prizes-redeem" disabled={!chosen}>Redeem</Button>
                 </> : <>

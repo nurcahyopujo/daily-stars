@@ -12,8 +12,8 @@
 
 /* Search, filters and sort. */
 .catalog-tools { margin: 22px 0 0; display: grid; gap: 12px; }
-.catalog .catalog-search { position: relative; display: block; margin: 0; }
-.catalog .catalog-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c7a6e; pointer-events: none; }
+.child-profiles .catalog-search { position: relative; display: block; margin: 0; }
+.child-profiles .catalog-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c7a6e; pointer-events: none; }
 .child-profiles .catalog-search input { margin: 0; padding-left: 40px; }
 .catalog-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (min-width: 640px) { .catalog-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
@@ -62,7 +62,16 @@ a.catalog-card-store:focus-visible { outline: 3px solid var(--color-focus); outl
 .child-profiles .redeem-mode button { flex: 1; min-height: 38px; margin: 0; border: 0; border-radius: 999px; background: transparent; color: #44524a; font-size: 13.5px; font-weight: 600; }
 .child-profiles .redeem-mode button:not(:disabled):hover { filter: none; background: #e9e6da; }
 .child-profiles .redeem-mode button[aria-pressed=true] { background: #fff; color: var(--color-action); box-shadow: 0 1px 4px rgb(25 44 34 / 12%); }
-.redeem-choices { margin: 14px 0 0; display: grid; gap: 8px; }
+.child-profiles fieldset.redeem-choices { margin: 16px 0 0; display: grid; gap: 8px; }
+.redeem-tools { display: grid; gap: 10px; margin-top: 16px; }
+@media (min-width: 460px) { .redeem-tools { grid-template-columns: minmax(0, 1fr) 170px; align-items: end; } }
+.child-profiles .redeem-tools label { margin: 0; font-size: 12px; font-weight: 650; color: #59665e; }
+.child-profiles .redeem-tools button[data-slot=select-trigger] { margin-top: 5px; padding: 0 12px; font-size: 14px; color: #293d35; }
+@media (min-width: 460px) { .child-profiles .redeem-tools .catalog-search input { min-height: 44px; } }
+.child-profiles .redeem-none { margin: 16px 0 0; }
+.redeem-more { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: 13px; font-weight: 600; color: #6c7a6e; font-variant-numeric: tabular-nums; }
+.child-profiles .redeem-more button { min-height: 40px; margin: 0; border: 1px solid var(--color-field-border); background: transparent; color: var(--color-action); font-size: 13.5px; }
+.child-profiles .redeem-more button:not(:disabled):hover { background: var(--color-action-soft); filter: none; }
 .child-profiles .redeem-choices label { display: flex; align-items: center; gap: 12px; margin: 0; padding: 9px 12px 9px 9px; border: 1px solid var(--color-border); border-radius: 14px; background: #fff; font-weight: 400; cursor: pointer; }
 .child-profiles .redeem-choices label:has(input:checked) { border-color: var(--color-action); background: var(--color-action-soft); }
 .child-profiles .redeem-choices label:has(input:disabled) { cursor: not-allowed; background: #f7f5ef; }

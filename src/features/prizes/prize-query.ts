@@ -1,4 +1,4 @@
-import type { Prize } from '../../../shared/prizes';
+import type { CatalogChoice, Prize } from '../../../shared/prizes';
 
 // The /prizes view selection: search, filters and sort, kept in URL search params.
 // The whole catalog is small, so the list is narrowed and ordered in the browser.
@@ -65,3 +65,22 @@ export function storeName(link: string): string {
 let lastQuery: PrizeQuery = {};
 export const rememberPrizeQuery = (query: PrizeQuery) => { lastQuery = query; };
 export const lastPrizeQuery = (): PrizeQuery => lastQuery;
+
+// ─── Redeem-page picker ───────────────────────────────────────────────────────
+// A child's view of the catalog when redeeming: why a prize is blocked, and the
+// searched / filtered subset. The picker shows the first REDEEM_PAGE and reveals more on demand.
+export const REDEEM_PAGE = 10;
+
+/** Why a catalog prize can't be redeemed for this child right now, if anything. */
+export function blockedReason(choice: CatalogChoice, balance: number): string | null {
+  if (choice.oneTime && choice.redeemed) return 'Already redeemed';
+  const short = choice.cost - Math.max(0, balance);
+  if (short > 0) return `Needs ${short} more ${short === 1 ? 'star' : 'stars'}`;
+  return null;
+}
+
+export function filterChoices(catalog: CatalogChoice[], balance: number, text: string, availableOnly: boolean): CatalogChoice[] {
+  const needle = text.trim().toLocaleLowerCase();
+  return catalog.filter(choice => (!needle || choice.name.toLocaleLowerCase().includes(needle))
+    && (!availableOnly || !blockedReason(choice, balance)));
+}

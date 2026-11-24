@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import type { Prize } from '../../shared/prizes';
 import { validatePrizeFields } from '../../shared/prizes';
-import { parsePrizeQuery, selectPrizes, storeName } from '../../src/features/prizes/prize-query';
+import { blockedReason, filterChoices, parsePrizeQuery, selectPrizes, storeName } from '../../src/features/prizes/prize-query';
 
 const prize = (name: string, cost: number, extra: Partial<Prize> = {}): Prize => ({
   id: name, name, cost, oneTime: false, link: null, imageUrl: null, archived: false, revision: 1,
@@ -49,4 +49,18 @@ it('normalizes prize fields and rejects non-https links', () => {
   expect(validatePrizeFields({ name: ' Lego ', cost: 3, oneTime: true, link: ' ', imageUrl: '' }))
     .toEqual({ fields: { name: 'Lego', cost: 3, oneTime: true, link: null, imageUrl: null, archived: false } });
   expect(validatePrizeFields({ name: 'Lego', cost: 3, oneTime: true, link: 'ftp://x' })).toHaveProperty('error');
+});
+
+it('narrows the redeem picker by name and by what the child can redeem now', () => {
+  const choices = [
+    { id: 'a', name: 'Kite', cost: 4, oneTime: true, imageUrl: null, redeemed: true },
+    { id: 'b', name: 'Ice cream', cost: 3, oneTime: false, imageUrl: null, redeemed: false },
+    { id: 'c', name: 'Bike', cost: 50, oneTime: false, imageUrl: null, redeemed: false },
+  ];
+  expect(blockedReason(choices[0], 10)).toBe('Already redeemed');
+  expect(blockedReason(choices[2], 49)).toBe('Needs 1 more star');
+  expect(blockedReason(choices[2], -5)).toBe('Needs 50 more stars');
+  expect(filterChoices(choices, 10, '', true).map(c => c.id)).toEqual(['b']);
+  expect(filterChoices(choices, 10, 'I', false).map(c => c.id)).toEqual(['a', 'b', 'c']);
+  expect(filterChoices(choices, 10, 'bik', false).map(c => c.id)).toEqual(['c']);
 });

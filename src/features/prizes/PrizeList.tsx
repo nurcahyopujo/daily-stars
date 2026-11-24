@@ -21,7 +21,7 @@ export function PrizeCost({ cost }: { cost: number }) {
   </span>;
 }
 
-type Option<T extends string> = { value: T; label: string };
+export type Option<T extends string> = { value: T; label: string };
 const STATUS_OPTIONS: Option<typeof STATUS[number]>[] = [
   { value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }, { value: 'all', label: 'All' }];
 const TYPE_OPTIONS: Option<typeof TYPE[number]>[] = [
@@ -33,7 +33,7 @@ const SORT_OPTIONS: Option<typeof SORT[number]>[] = [
   { value: 'name-asc', label: 'Name: A–Z' }, { value: 'name-desc', label: 'Name: Z–A' }, { value: 'newest', label: 'Newest' }];
 
 // One labelled filter on the shared shadcn Select; `items` lets the trigger show the label.
-function FilterSelect<T extends string>({ label, options, value, onChange }: {
+export function FilterSelect<T extends string>({ label, options, value, onChange }: {
   label: string; options: Option<T>[]; value: T; onChange: (value: T) => void;
 }) {
   return <label>{label}
