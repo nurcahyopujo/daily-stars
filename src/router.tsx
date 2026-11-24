@@ -3,8 +3,10 @@ import { RootShell } from './features/auth/RootShell';
 import { ProfilePage } from './features/auth/ProfilePage';
 import { useSession } from './features/auth/session-context';
 import { ChildProfiles } from './features/children/ChildProfiles';
-import { RuleSettings } from './features/children/RuleSettings';
+import { TemplateList } from './features/children/TemplateList';
+import { TemplateEditor } from './features/children/TemplateEditor';
 import { ChildDayRoute, ChildPrizesRoute, ChildReviewRoute, ChildAssignmentsRoute } from './features/children/child-routes';
+import { getRouteApi, useNavigate } from '@tanstack/react-router';
 
 function HomePage() {
   const { sessionExpired } = useSession();
@@ -28,9 +30,25 @@ function NotFoundPage() {
   );
 }
 
-function RuleSettingsPage() {
+function TemplateListPage() {
   const { sessionExpired } = useSession();
-  return <RuleSettings onSessionExpired={sessionExpired} />;
+  return <TemplateList onSessionExpired={sessionExpired} />;
+}
+
+function TemplateCreatePage() {
+  const { sessionExpired } = useSession();
+  const navigate = useNavigate();
+  return <TemplateEditor target={{ kind: 'create' }} onSessionExpired={sessionExpired}
+    onSaved={() => void navigate({ to: '/templates' })} />;
+}
+
+const templateEditApi = getRouteApi('/templates/$templateId');
+function TemplateEditPage() {
+  const { templateId } = templateEditApi.useParams();
+  const { sessionExpired } = useSession();
+  const navigate = useNavigate();
+  return <TemplateEditor key={templateId} target={{ kind: 'edit', id: templateId }} onSessionExpired={sessionExpired}
+    onSaved={() => void navigate({ to: '/templates' })} />;
 }
 
 // A selected activity date is a view selection, not a page: a validated search param.
@@ -51,7 +69,9 @@ const routeTree = rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/prizes', component: ChildPrizesRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/review', validateSearch: dateSearch, component: ChildReviewRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/assignments', component: ChildAssignmentsRoute }),
-  createRoute({ getParentRoute: () => rootRoute, path: '/templates', component: RuleSettingsPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/templates', component: TemplateListPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/templates/new', component: TemplateCreatePage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/templates/$templateId', component: TemplateEditPage }),
 ]);
 
 export const router = createRouter({ routeTree, trailingSlash: 'never' });

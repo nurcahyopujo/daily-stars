@@ -347,3 +347,117 @@
 @media (min-width: 460px) { .assignments-page form button.assign-save { width: auto; min-width: 184px; } }
 
 .assignments-page .assign-archived { margin: 0; padding: 13px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: #f7f5ef; color: #59665e; font-size: 14px; line-height: 1.5; }
+
+/* ─── Templates library ──────────────────────────────────────────────────────
+   Reusable routines. The index reads as linked cards (the whole card opens its
+   editor page); create and edit are full pages now, not a modal. */
+.templates-heading { align-items: flex-start; }
+.templates-list h1 { margin: 0; font-size: clamp(30px, 8vw, 38px); line-height: 1.08; letter-spacing: -0.03em; font-weight: 700; }
+.templates-list .templates-intro { margin: 10px 0 0; max-width: 52ch; font-size: 14px; line-height: 1.5; color: #59665e; text-wrap: pretty; }
+
+/* Create: the single green primary, as a link styled to the app's primary buttons. */
+a.templates-create { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 18px 0 15px; border-radius: var(--radius-control); background: var(--color-action); color: #fff; font-size: 14px; font-weight: 650; text-decoration: none; white-space: nowrap; box-shadow: 0 2px 8px rgb(54 88 66 / 18%); transition: background-color .15s ease; }
+a.templates-create:hover { background: #2c4a37; }
+a.templates-create:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+
+.templates-list .templates-saved { margin: 18px 0 0; padding: 12px 15px; border-radius: var(--radius-control); background: var(--color-action-soft); color: var(--color-action); font-size: 14px; font-weight: 600; }
+
+.templates-cards { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+a.template-card { display: flex; align-items: center; gap: 14px; padding: 17px 16px 17px 20px; border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); color: #293d35; text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease; }
+a.template-card:hover { border-color: var(--color-field-border); box-shadow: 0 6px 18px rgb(25 44 34 / 7%); }
+a.template-card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.template-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.template-card-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.template-card-name { font-family: var(--font-heading); font-size: 18px; font-weight: 650; letter-spacing: -0.2px; line-height: 1.25; color: #293d35; overflow-wrap: anywhere; }
+.template-card-count { flex: none; font-size: 12px; font-weight: 600; color: #6c7a6e; font-variant-numeric: tabular-nums; }
+.template-card-activities { margin: 0; font-size: 13.5px; line-height: 1.5; color: #59665e; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.template-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1px; }
+.template-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 650; letter-spacing: 0.01em; }
+.template-tag.is-scheduled { background: var(--color-action-soft); color: #2c4a37; }
+.template-tag.is-retiring, .template-tag.is-retired { background: #f1ece2; color: #7a6a4a; }
+.template-card-chevron { flex: none; color: #9aa69a; transition: transform .15s ease, color .15s ease; }
+a.template-card:hover .template-card-chevron { color: var(--color-action); transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { a.template-card:hover .template-card-chevron { transform: none; } }
+
+.templates-empty { margin: 24px 0 0; padding: 40px 28px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); text-align: center; }
+.templates-empty .templates-empty-title { margin: 0; font-family: var(--font-heading); font-size: 18px; font-weight: 650; color: #293d35; }
+.templates-empty p:not(.templates-empty-title) { margin: 8px auto 0; max-width: 34ch; font-size: 14px; line-height: 1.5; color: #59665e; text-wrap: pretty; }
+a.templates-empty-create { margin-top: 20px; }
+
+/* ─── Template editor (create / edit) ─────────────────────────────────────────
+   Mirrors the assignments page: a dated schedule timeline above a single editor
+   card. Activities are a collapsible list; weekdays are toggle chips. */
+.templates-editor .tpl-intro { margin: -2px 0 0; max-width: 54ch; font-size: 14px; line-height: 1.5; color: #59665e; text-wrap: pretty; }
+.templates-editor .assign-schedule { margin: 18px 0 20px; }
+.templates-editor .assign-empty { display: inline-block; font-size: 13.5px; color: #7c8379; }
+.templates-editor .tpl-affected { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--color-border); font-size: 13.5px; color: #59665e; }
+.templates-editor .tpl-affected strong { color: #34463c; font-weight: 650; }
+
+.templates-editor form { margin: 0; padding: 20px 20px 22px; border-radius: 22px; }
+.templates-editor .tpl-name { margin: 0; font-weight: 600; font-size: 14px; }
+.templates-editor .tpl-activities-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 24px 0 10px; }
+.templates-editor .tpl-section-title { margin: 0; font-size: 15px; font-weight: 650; }
+.templates-editor .tpl-activities-count { font-size: 12px; font-weight: 600; color: #6c7a6e; font-variant-numeric: tabular-nums; }
+
+/* Activity rows: a collapsible card list. Collapsed shows name + reward/day summary;
+   expanded reveals the fields. One open at a time keeps a 30-activity template legible. */
+.templates-editor .tpl-activities { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.tpl-activity { border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); overflow: hidden; transition: border-color .15s ease, box-shadow .15s ease; }
+.tpl-activity[data-open] { border-color: #c7d2bb; box-shadow: 0 4px 14px rgb(25 44 34 / 6%); }
+.child-profiles.templates-editor button.tpl-activity-summary { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; margin: 0; padding: 11px 14px; border: 0; border-radius: 0; background: transparent; color: #293d35; text-align: left; font: inherit; }
+.child-profiles.templates-editor button.tpl-activity-summary:not(:disabled):hover { background: #faf9f3; filter: none; }
+.tpl-activity-index { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--color-action-soft); color: var(--color-action); font-family: var(--font-heading); font-size: 13px; font-weight: 700; }
+.tpl-activity-head { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tpl-activity-name { font-weight: 650; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.tpl-activity-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: #6c7a6e; }
+.tpl-activity-meta .tpl-reward { color: #5f4a16; font-weight: 650; font-variant-numeric: tabular-nums; }
+.tpl-activity-caret { flex: none; color: #9aa69a; transition: transform .2s ease, color .2s ease; }
+.tpl-activity[data-open] .tpl-activity-caret { transform: rotate(180deg); color: var(--color-action); }
+@media (prefers-reduced-motion: reduce) { .tpl-activity-caret { transition: none; } }
+.tpl-activity-fields { padding: 2px 14px 16px; }
+.tpl-activity-fields label { margin-top: 14px; font-size: 14px; }
+.tpl-points { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 360px) { .tpl-points { grid-template-columns: 1fr; } }
+
+/* Weekday chips: toggle pills, green fill when on (the app's selectable-chip language). */
+.tpl-weekdays { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+.child-profiles.templates-editor button.tpl-day { min-height: 38px; min-width: 46px; margin: 0; padding: 0 10px; border: 1px solid var(--color-field-border); border-radius: 999px; background: #fff; color: #44524a; font-size: 13px; font-weight: 600; }
+.child-profiles.templates-editor button.tpl-day:not(:disabled):hover { background: var(--color-action-soft); border-color: #bcd0ab; filter: none; }
+.child-profiles.templates-editor button.tpl-day[aria-pressed=true] { background: var(--color-action); border-color: var(--color-action); color: #fff; }
+.child-profiles.templates-editor button.tpl-day[aria-pressed=true]:not(:disabled):hover { background: #2c4a37; }
+.child-profiles.templates-editor button.tpl-day:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+
+/* Activity controls: quiet ghost buttons (never the green primary). */
+.tpl-activity-controls { display: flex; align-items: center; gap: 8px; margin-top: 18px; }
+.child-profiles.templates-editor button.tpl-move { width: 40px; min-height: 38px; margin: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--color-border); background: transparent; color: var(--color-action); }
+.child-profiles.templates-editor button.tpl-move:not(:disabled):hover { background: var(--color-action-soft); border-color: #c7d2bb; filter: none; }
+.child-profiles.templates-editor button.tpl-remove { margin: 0 0 0 auto; min-height: 38px; display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; border: 1px solid #e0c3b7; background: transparent; color: #9a3b1f; font-size: 13px; font-weight: 600; }
+.child-profiles.templates-editor button.tpl-remove:not(:disabled):hover { background: #f8ebe5; filter: none; }
+
+.tpl-add-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.child-profiles.templates-editor button.tpl-add { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; margin: 0; border: 1px dashed var(--color-field-border); background: transparent; color: var(--color-action); font-weight: 650; }
+.child-profiles.templates-editor button.tpl-add:not(:disabled):hover { background: var(--color-action-soft); border-style: solid; filter: none; }
+.child-profiles.templates-editor button.tpl-retire { min-height: 44px; margin: 0 0 0 auto; border: 1px solid #e0c3b7; background: transparent; color: #9a3b1f; font-weight: 600; }
+.child-profiles.templates-editor button.tpl-retire:not(:disabled):hover { background: #f8ebe5; filter: none; }
+
+.templates-editor .tpl-retire-note { margin: 18px 0 0; padding: 13px 15px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; color: #5f4a16; font-size: 13.5px; line-height: 1.5; }
+.templates-editor .tpl-retire-note time { font-weight: 700; color: #4a3a12; }
+
+/* Takes-effect note: household date in the gold "warmth, never action" accent. */
+.templates-editor .tpl-effective { display: flex; align-items: center; gap: 10px; margin: 22px 0 0; padding: 12px 15px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; color: #5f4a16; font-size: 13.5px; line-height: 1.45; }
+.templates-editor .tpl-effective svg { flex: none; color: #8a681f; }
+.templates-editor .tpl-effective time { font-weight: 700; color: #4a3a12; font-variant-numeric: tabular-nums; }
+
+.tpl-save-row { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.child-profiles.templates-editor button.tpl-save { width: 100%; min-height: 48px; margin: 0; font-size: 15px; }
+.child-profiles.templates-editor button.tpl-cancel { width: 100%; min-height: 48px; margin: 0; border: 1px solid var(--color-field-border); background: transparent; color: var(--color-action); font-weight: 600; }
+.child-profiles.templates-editor button.tpl-cancel:not(:disabled):hover { background: var(--color-action-soft); filter: none; }
+@media (min-width: 460px) {
+  .tpl-save-row { flex-direction: row; align-items: center; }
+  .child-profiles.templates-editor button.tpl-save { width: auto; min-width: 184px; }
+  .child-profiles.templates-editor button.tpl-cancel { width: auto; min-width: 140px; }
+}
+.templates-editor .tpl-validation { margin: 14px 0 0; color: #9a3b1f; font-weight: 600; font-size: 14px; }
+.templates-editor .tpl-savestatus { margin: 16px 0 0; color: #59665e; }
+.templates-editor .tpl-loading, .templates-editor .tpl-loaderror { margin-top: 18px; }
+.templates-editor .tpl-conflict-mine { margin-top: 12px; }
