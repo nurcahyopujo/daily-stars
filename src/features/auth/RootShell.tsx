@@ -29,6 +29,7 @@ export function RootShell() {
   const [session, setSession] = useState<SessionState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const lastEmail = useRef<string | null>(null);
   const childSave = useChildSave();
@@ -50,6 +51,14 @@ export function RootShell() {
 
   // Close the menu when the route changes (menu links, back/forward, or in-app navigation).
   useEffect(() => { setMenuOpen(false); }, [pathname]);
+
+  // Let the sticky topbar detach visually once the page scrolls beneath it.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 2);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     let controller: AbortController;
@@ -99,7 +108,7 @@ export function RootShell() {
   return (
     <SessionProvider value={{ session, parent: session.status === 'signed-in' ? session.parent : null, signOut, sessionExpired }}>
     <main>
-    <header className="parent-topbar">
+    <header className="parent-topbar" data-scrolled={scrolled || undefined}>
       <div className="brand"><span className="star" aria-hidden="true">✦</span><span>Daily Stars</span></div>
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger render={<Button ref={menuButton} className="parent-menu-toggle" type="button" aria-label="Main menu" />}>
