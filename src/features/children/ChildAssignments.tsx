@@ -127,9 +127,8 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
   return <section className="child-profiles score-day scoring-day assignments-page" aria-busy={loading}>
     {!frozen && <Link className={backLinkClass} to="/children/$childId" params={{ childId }}><BackLabel>{child.displayName}</BackLabel></Link>}
     <header className="scoring-day-head">
-      <h1 ref={heading} tabIndex={-1}>{child.displayName}</h1>
+      <h1 ref={heading} tabIndex={-1}>{child.displayName} · Assignments</h1>
     </header>
-    <h2>Assignments</h2>
     <p className="assign-intro">A change takes effect from the next Jakarta day, so today’s checklist is never rewritten.</p>
 
     {loadError ? <div role="alert"><p>{loadError}</p>

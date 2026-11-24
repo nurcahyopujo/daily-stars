@@ -214,7 +214,9 @@ export function ActivityReview({ child, date, onSessionExpired }: { child: Child
   return (
     <section className="child-profiles activity-review" aria-labelledby="activity-review-title">
       <Link className={backLinkClass} to="/children/$childId" params={{ childId: child.id }} search={date ? { date } : {}}><BackLabel>{child.displayName}</BackLabel></Link>
-      <h1 id="activity-review-title">{child.displayName}’s activity review</h1>
+      <header className="scoring-day-head">
+        <h1 id="activity-review-title">{child.displayName} · Activity review</h1>
+      </header>
 
       <fieldset className="activity-review-periods-toggle">
         <legend>Review period</legend>

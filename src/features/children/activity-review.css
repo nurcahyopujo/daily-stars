@@ -1,7 +1,8 @@
+/* Match the shared child sub-page title (.score-day h1): size only, inheriting
+   the global h1 line-height and tracking so Prizes, Assignments, and Activity
+   review read identically. */
 .activity-review h1 {
   font-size: clamp(26px, 7vw, 32px);
-  line-height: 1.2;
-  letter-spacing: -0.03em;
   overflow-wrap: anywhere;
 }
 .activity-review h2 {

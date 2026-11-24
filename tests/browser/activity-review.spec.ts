@@ -36,7 +36,7 @@ async function openDay(page: Page, name: string) {
 
 async function openReviewFromDay(page: Page, name: string) {
   await page.getByRole('link', { name: 'Activity review', exact: true }).click();
-  await expect(page.getByRole('heading', { name: name + '’s activity review' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: name + ' · Activity review' })).toBeVisible();
 }
 
 async function openReview(page: Page, name: string) {

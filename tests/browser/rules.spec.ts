@@ -83,7 +83,7 @@ test('creates a template and assigns it to an existing child through local D1', 
   await page.getByRole('link', { name: child, exact: true }).click();
   await page.getByRole('link', { name: 'Assignments', exact: true }).click();
   await expect(page).toHaveURL(/\/children\/.+\/assignments$/);
-  await expect(page.getByRole('heading', { name: child, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: child + ' · Assignments', exact: true })).toBeVisible();
 
   await expect(page.getByRole('checkbox', { name: template })).toHaveAccessibleDescription(activity);
   await page.getByRole('checkbox', { name: template }).check();
