@@ -44,8 +44,9 @@ function useCountUp(value: number, reduce: boolean) {
 }
 
 /** The gold star glyph: vertical gradient fill, a one-shot specular sweep, and
- *  mount glints. Shared by the children cards and the day hero. */
-function GoldStar({ size, reduce, animated = true }: { size: number; reduce: boolean; animated?: boolean }) {
+ *  mount glints. Shared by the children cards, the day hero, and the prize
+ *  balance / redemption costs. */
+export function GoldStar({ size, reduce, animated = true }: { size: number; reduce: boolean; animated?: boolean }) {
   const live = animated && !reduce;
   const id = useId();
   const fill = `${id}-fill`;

@@ -11,7 +11,7 @@ test('parent records a zero outcome and a one-off award, then sees the running t
     data: { displayName: name, initialTemplateIds: ['33333333-3333-4333-8333-333333333333'] },
   });
   expect(result.status()).toBe(201);
-  await page.goto(origin + '/children');
+  await page.goto(origin + '/');
   const row = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name, exact: true }) });
   await expect(row.getByRole('link', { name, exact: true })).toHaveAccessibleDescription('View today →');
   const card = await row.boundingBox();
@@ -30,6 +30,6 @@ test('parent records a zero outcome and a one-off award, then sees the running t
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(page.locator('article').filter({ hasText: 'Helped tidy up' })).toContainText('★★★');
   await page.screenshot({ path: info.outputPath('day.png'), fullPage: true });
-  await page.getByRole('link', { name: /Manage children/ }).click();
+  await page.getByRole('link', { name: /All children/ }).click();
   await expect(row.getByLabel('3 stars')).toBeVisible();
 });

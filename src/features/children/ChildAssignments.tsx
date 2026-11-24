@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarClock } from "lucide-react";
 import { Link, useNavigate } from '@tanstack/react-router';
+import { BackLabel, backLinkClass } from './BackLink';
 import { useEffect, useRef, useState } from 'react';
 import { nextDate } from '../../../worker/calendar';
 import type { AssignmentDetail, TemplateSummary } from '../../../shared/profiles';
@@ -11,6 +13,19 @@ import './child-profiles.css';
 
 function versionFor(template: TemplateSummary, date: string) {
   return template.pending && template.pending.effectiveDate <= date ? template.pending : template.current;
+}
+
+// Household dates are plain Jakarta calendar strings; format them from UTC midnight
+// so the weekday/day never shifts with the viewer's own time zone.
+const dayFormat = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+function dayLabel(iso: string) {
+  return iso ? dayFormat.format(new Date(iso + 'T00:00:00Z')) : '';
+}
+
+// The routines scheduled for one day, as pills — or a quiet note when the day is clear.
+function Chips({ names }: { names: string[] }) {
+  if (!names.length) return <span className="assign-empty">No templates</span>;
+  return <span className="assign-chips">{names.map(name => <span className="assign-chip" key={name}>{name}</span>)}</span>;
 }
 
 // A standalone, child-scoped version of the assignment editor that used to live in the modal on the
@@ -46,14 +61,15 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
     const version = versionFor(template, effectiveDate);
     return version && !version.retired ? [{ id: template.id, version }] : [];
   }) : [];
-  const assignmentNames = (list: string[], date: string) => list.map(id => {
+  const nameList = (list: string[], date: string) => list.map(id => {
     const template = templates.find(item => item.id === id);
     const version = template && versionFor(template, date);
     return version && !version.retired ? version.name : '';
-  }).filter(Boolean).join(', ') || 'No templates';
+  }).filter(Boolean);
+  const assignmentNames = (list: string[], date: string) => nameList(list, date).join(', ') || 'No templates';
 
   useEffect(() => {
-    if (data && !child) void navigate({ to: '/children' });
+    if (data && !child) void navigate({ to: '/' });
   }, [data, child, navigate]);
 
   // Load this child's current/pending assignments; default the picker to the latest planned templates.
@@ -102,48 +118,71 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
       body: { expectedRevision, templateIds: selectedAssignments, ...(startToday ? { startToday } : {}) } });
   }
 
-  const nav = child && <nav className="scoring-day-links" aria-label="Child pages">
-    <Link to="/children/$childId/day" params={{ childId }}>Daily scoring</Link>
-    <Link to="/children/$childId/prizes" params={{ childId }}>Prizes</Link>
-    <Link to="/children/$childId/review" params={{ childId }}>Activity review</Link>
-  </nav>;
-
   if (error) return <section className="child-profiles"><div role="alert">
     <p>Couldn’t load this child. Check your connection and try again.</p>
     <Button type="button" onClick={() => void reload()}>Try again</Button>
   </div></section>;
   if (!data || !child) return <section className="child-profiles"><p role="status" aria-busy={loading}>Loading…</p></section>;
 
-  return <section className="child-profiles score-day scoring-day" aria-busy={loading}>
-    {!frozen && <Link className="scoring-day-back" to="/children">← Manage children</Link>}
+  return <section className="child-profiles score-day scoring-day assignments-page" aria-busy={loading}>
+    {!frozen && <Link className={backLinkClass} to="/children/$childId" params={{ childId }}><BackLabel>{child.displayName}</BackLabel></Link>}
     <header className="scoring-day-head">
       <h1 ref={heading} tabIndex={-1}>{child.displayName}</h1>
-      {!frozen && nav}
     </header>
     <h2>Assignments</h2>
+    <p className="assign-intro">A change takes effect from the next Jakarta day, so today’s checklist is never rewritten.</p>
 
     {loadError ? <div role="alert"><p>{loadError}</p>
         <Button type="button" onClick={() => void reload()}>Try again</Button></div>
       : !detail ? <p role="status">Loading assignments…</p>
-      : !eligible ? <>
-        <p role="note">This child is archived and can’t receive assignment changes.</p>
-        <p><strong>Active today</strong> · {assignmentNames(detail.current?.templateIds ?? [], today)}</p>
-        <p><strong>Effective tomorrow</strong> · {assignmentNames(detail.pending?.templateIds ?? detail.current?.templateIds ?? [], tomorrow)}</p>
-      </> : <form onSubmit={event => { event.preventDefault(); submit(); }}>
-        <fieldset disabled={frozen}>
-          <p><strong>Active today</strong> · {assignmentNames(detail.current?.templateIds ?? [], today)}</p>
-          <p><strong>Effective tomorrow</strong> · {assignmentNames(detail.pending?.templateIds ?? detail.current?.templateIds ?? [], tomorrow)}</p>
-          <label className="child-profiles-template">
-            <Checkbox disabled={frozen} checked={startToday} onCheckedChange={toggleStartToday}/>
-            <span>Start new templates today<small>Add to today’s checklist and carry the additions into tomorrow’s plan.</small></span>
-          </label>
-          <TemplatePicker title={startToday ? 'Templates to add today' : 'Templates in checklist order'}
-            disabled={frozen} options={assignmentOptions} selected={selectedAssignments}
-            onChange={next => startToday ? setAdditions(next) : setIds(next)}/>
-          <p>Effective <time dateTime={effectiveDate}>{effectiveDate}</time> · Jakarta</p>
-          <Button type="submit" disabled={startToday && !selectedAssignments.length}>Save assignments</Button>
-        </fieldset>
-      </form>}
+      : <>
+        <div className="assign-schedule">
+          <div className="assign-node is-today">
+            <span className="assign-node-rail" aria-hidden="true"><span className="assign-node-dot" /></span>
+            <div className="assign-node-body">
+              <div className="assign-node-head">
+                <span className="assign-node-when">Active today</span>
+                {today && <span className="assign-node-date">{dayLabel(today)}</span>}
+              </div>
+              <Chips names={nameList(detail.current?.templateIds ?? [], today)} />
+            </div>
+          </div>
+          <div className="assign-node is-tomorrow">
+            <span className="assign-node-rail" aria-hidden="true"><span className="assign-node-dot" /></span>
+            <div className="assign-node-body">
+              <div className="assign-node-head">
+                <span className="assign-node-when">Effective tomorrow</span>
+                {tomorrow && <span className="assign-node-date">{dayLabel(tomorrow)}</span>}
+              </div>
+              <Chips names={nameList((detail.pending ?? detail.current)?.templateIds ?? [], tomorrow)} />
+              {!detail.pending && <span className="assign-node-note">No change scheduled</span>}
+            </div>
+          </div>
+        </div>
+
+        {!eligible
+          ? <p role="note" className="assign-archived">This child is archived and can’t receive assignment changes.</p>
+          : <form onSubmit={event => { event.preventDefault(); submit(); }}>
+              <fieldset disabled={frozen}>
+                <h3 className="assign-editor-title">Change the schedule</h3>
+                <label className="assign-toggle">
+                  <Checkbox disabled={frozen} checked={startToday} onCheckedChange={toggleStartToday}/>
+                  <span className="assign-toggle-text">
+                    <span className="assign-toggle-title">Start new templates today</span>
+                    <small>Add to today’s checklist and carry the additions into tomorrow’s plan.</small>
+                  </span>
+                </label>
+                <TemplatePicker title={startToday ? 'Templates to add today' : 'Templates in checklist order'}
+                  disabled={frozen} options={assignmentOptions} selected={selectedAssignments}
+                  onChange={next => startToday ? setAdditions(next) : setIds(next)}/>
+                <p className="assign-effective">
+                  <CalendarClock size={16} aria-hidden="true" />
+                  <span>Takes effect <time dateTime={effectiveDate}>{dayLabel(effectiveDate)}</time> · Jakarta</span>
+                </p>
+                <Button type="submit" className="assign-save" disabled={startToday && !selectedAssignments.length}>Save assignments</Button>
+              </fieldset>
+            </form>}
+      </>}
 
     {ownsSave && save.status === 'saving' && <p role="status">Saving {save.intent.label}…</p>}
     {ownsSave && save.status === 'rejected' && <div className="child-profiles-save"><p role="alert">{save.message}</p>

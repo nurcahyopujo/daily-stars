@@ -13,7 +13,7 @@ async function pick(page: Page, combo: string, option: string) {
 }
 
 async function openDay(page: Page, name: string) {
-  await page.goto(origin + '/children');
+  await page.goto(origin + '/');
   const child = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { name, exact: true }),
   });
@@ -210,7 +210,7 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await pick(page, 'Review period', 'Last 4 weeks');
   await expect(cellsOn(previousScoreDate)).toHaveText(['+1', '0', '+1']);
 
-  await page.getByRole('link', { name: /Back to day/ }).click();
+  await page.getByRole('link', { name, exact: true }).click();
   await expect(page.getByRole('button', { name: /Activity date/ })).toHaveAccessibleName(/6 Nov 2026/);
   await oneOff.getByRole('button', { name: 'Edit entry' }).click();
   await pick(page, 'Entry type', 'Deduction');
@@ -222,7 +222,7 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await openReviewFromDay(page, name);
   await expect(cellsOn(routineDate)).toHaveText(['+2', '-3', '-1']);
 
-  await page.getByRole('link', { name: /Back to day/ }).click();
+  await page.getByRole('link', { name, exact: true }).click();
   await oneOff.getByRole('button', { name: 'Void entry' }).click();
   const voidDialog = page.getByRole('alertdialog', { name: 'Void entry?' });
   await expect(voidDialog).toContainText('This is final.');
@@ -235,7 +235,7 @@ test('parent sees dated routine points, corrected and voided awards, and a reset
   await openReviewFromDay(page, name);
   await expect(cellsOn(routineDate)).toHaveText(['+2', '0', '+2']);
 
-  await page.getByRole('link', { name: /Back to day/ }).click();
+  await page.getByRole('link', { name, exact: true }).click();
   await routine.getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(routine.getByText('Unrecorded', { exact: true })).toBeVisible();
   await openReviewFromDay(page, name);

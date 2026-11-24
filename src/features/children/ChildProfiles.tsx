@@ -69,7 +69,7 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
   function childRow(child: Child & { total?: number; balance?: number; todayPoints?: number }) {
     const isArchived = Boolean(child.archiveEffectiveDate && data && child.archiveEffectiveDate <= data.today);
     return <li className="child-profile-card" key={child.id}>
-      <div><h2><Link className="child-profile-day" to="/children/$childId/day" params={{ childId: child.id }} aria-describedby={`child-day-${child.id}`}>{child.displayName}</Link></h2>{child.total !== undefined && <StarBalance balance={child.balance ?? child.total} today={child.todayPoints}/>}<p className="child-profile-meta">Started {child.startDate}</p>
+      <div><h3><Link className="child-profile-day" to="/children/$childId" params={{ childId: child.id }} aria-describedby={`child-day-${child.id}`}>{child.displayName}</Link></h3>{child.total !== undefined && <StarBalance balance={child.balance ?? child.total} today={child.todayPoints}/>}<p className="child-profile-meta">Started {child.startDate}</p>
         {child.archiveEffectiveDate && <p className="child-profile-meta">{isArchived ? 'Archived from' : 'Archives on'} {child.archiveEffectiveDate} · History preserved</p>}
         <p className="child-profile-hint" id={`child-day-${child.id}`}>{isArchived ? 'View last day' : 'View today'} →</p>
       </div>
@@ -77,15 +77,10 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
     </li>;
   }
 
-  return <section className="child-profiles" aria-labelledby="profiles-title" aria-busy={loading}>
-    <div className="child-profiles-heading"><div><h1 id="profiles-title">Manage children</h1>
-      <p>Keep your children’s profiles and history in one place.</p></div>
-      <Button ref={addButton} type="button" disabled={locked || loading} onClick={(event) => open(null, event.currentTarget)}>Add child</Button>
-    </div>
+  return <section className="child-profiles" aria-label="Children" aria-busy={loading}>
     {loading && <p role="status">Loading child profiles…</p>}
     {error && <div role="alert"><p>Couldn’t load child profiles. Check your connection and try again.</p><Button type="button" onClick={() => void load()}>Reload profiles</Button></div>}
     {data && <>
-      <p className="child-profiles-date">As of {data.today} · Jakarta</p>
       <Tabs value={tab} onValueChange={(value) => { if (value === 'active' || value === 'archived') setTab(value); }}>
         <TabsList activateOnFocus className="child-profiles-tabs my-3 min-h-11" aria-label="Child status">
           {(['active', 'archived'] as const).map((status) => <TabsTrigger key={status} value={status} className="min-h-11"
@@ -103,6 +98,9 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
           <ul className="child-profiles-list child-profiles-children" aria-label="Archived children">{archived.map(childRow)}</ul>
         </TabsContent>
       </Tabs>
+      <div className="child-profiles-add">
+        <Button ref={addButton} type="button" disabled={locked || loading} onClick={(event) => open(null, event.currentTarget)}>Add child</Button>
+      </div>
     </>}
 
     <Dialog open={modalOpen} onOpenChange={(open) => {

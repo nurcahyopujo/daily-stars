@@ -6,6 +6,7 @@ import { DatePicker } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HistoryIcon } from "lucide-react";
+import { BackLabel, backLinkClass } from './BackLink';
 import { Link } from '@tanstack/react-router';
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Child } from '../../../shared/profiles';
@@ -311,7 +312,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
   const current = conflict && latest.get(conflict.path.slice(path.length + 1));
   return (
     <section className="child-profiles score-day scoring-day">
-      {!pending && <Link className="scoring-day-back" to="/children">← Manage children</Link>}
+      {!pending && <Link className={backLinkClass} to="/"><BackLabel>All children</BackLabel></Link>}
       <header className="scoring-day-head">
         <h1>{child.displayName}</h1>
         {!pending && (

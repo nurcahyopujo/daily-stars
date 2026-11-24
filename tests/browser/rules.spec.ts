@@ -25,12 +25,12 @@ test('edits a shared routine and recovers a lost response using the original act
     return route.fulfill({ json: { id: 'morning', revision: 2, effectiveDate: tomorrow } });
   });
 
-  await page.goto('/children');
-  await expect(page.getByRole('heading', { name: 'Manage children' })).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Create template' })).toHaveCount(0);
   await navigate(page, 'Activity templates');
   await expect(page).toHaveURL('/templates');
-  await expect(page.getByRole('heading', { name: 'Manage children' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Edit Morning routine, Make the bed' }).click();
   const editor = page.getByRole('dialog', { name: 'Template details' });
   await expect(editor.getByText('Affected children on 2026-11-10: Sunny, Robin')).toBeVisible();
@@ -43,10 +43,10 @@ test('edits a shared routine and recovers a lost response using the original act
   await editor.getByRole('button', { name: 'Save template' }).click();
   await expect(page.getByRole('alert')).toContainText('Save not confirmed');
   await page.goBack();
-  await expect(page).toHaveURL('/children');
+  await expect(page).toHaveURL('/');
   await expect(page.getByRole('alert')).toContainText('Save not confirmed');
   await page.getByRole('button', { name: 'Check / retry' }).click();
-  await expect(page.getByRole('heading', { name: 'Manage children' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toBeVisible();
   await navigate(page, 'Activity templates');
   await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toContainText('Effective 2026-11-10');
   expect(keys).toEqual([keys[0], keys[0]]);
@@ -56,7 +56,7 @@ test('creates a template and assigns it to an existing child through local D1', 
   const suffix = crypto.randomUUID().slice(0, 8);
   const child = `Assignment child ${suffix}`;
   const template = `Evening routine ${suffix}`;
-  await page.goto('http://127.0.0.1:4174/children');
+  await page.goto('http://127.0.0.1:4174/');
   await page.getByRole('button', { name: 'Add child', exact: true }).click();
   await page.getByRole('textbox', { name: 'Nickname', exact: true }).fill(child);
   await page.getByRole('button', { name: 'Create child', exact: true }).click();
@@ -79,7 +79,7 @@ test('creates a template and assigns it to an existing child through local D1', 
   await expect(page.getByRole('button', { name: `Edit ${template}, ${activity}` })).toBeVisible();
 
   // Assignments live on the child's own detail page now, as an inline editor (no dialog).
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await page.getByRole('link', { name: child, exact: true }).click();
   await page.getByRole('link', { name: 'Assignments', exact: true }).click();
   await expect(page).toHaveURL(/\/children\/.+\/assignments$/);
@@ -89,8 +89,8 @@ test('creates a template and assigns it to an existing child through local D1', 
   await page.getByRole('checkbox', { name: template }).check();
   await page.getByRole('button', { name: 'Save assignments' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved Assignments' })).toContainText('Effective');
-  await expect(page.getByText(`Effective tomorrow · ${template}`)).toBeVisible();
-  await expect(page.getByText('Active today · No templates')).toBeVisible();
+  await expect(page.locator('.assign-node.is-tomorrow')).toContainText(template);
+  await expect(page.locator('.assign-node.is-today')).toContainText('No templates');
 
   const startToday = page.getByRole('checkbox', { name: /Start new templates today/ });
   await startToday.check();
@@ -101,8 +101,8 @@ test('creates a template and assigns it to an existing child through local D1', 
   await page.screenshot({ path: testInfo.outputPath('assignments-start-today.png'), fullPage: true });
   await page.getByRole('button', { name: 'Save assignments' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved Assignments' })).toContainText('Effective');
-  await expect(page.getByText(`Active today · ${template}`)).toBeVisible();
-  await expect(page.getByText(`Effective tomorrow · ${template}`)).toBeVisible();
+  await expect(page.locator('.assign-node.is-today')).toContainText(template);
+  await expect(page.locator('.assign-node.is-tomorrow')).toContainText(template);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('assignments.png'), fullPage: true });
 

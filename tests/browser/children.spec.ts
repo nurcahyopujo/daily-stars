@@ -55,11 +55,13 @@ async function fixture(page: Page, options: { children?: Child[]; loseResponse?:
   return { mutations, getChildren: () => children };
 }
 
-test('hamburger menu switches between the Home hero, children and the sign-in Profile', async ({ page }, testInfo) => {
+test('Home shows the hero above child management; the menu switches to the sign-in Profile', async ({ page }, testInfo) => {
   await fixture(page, { children: [currentChild] });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toBeVisible();
   await expect(page.getByText('A place for your family’s routines, daily activities, and points.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Manage Robin' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Profile', exact: true })).toHaveCount(0);
   await expect(page.getByRole('contentinfo')).toHaveText('Every effort counts.');
   const burger = page.getByRole('button', { name: 'Main menu', exact: true });
@@ -69,7 +71,7 @@ test('hamburger menu switches between the Home hero, children and the sign-in Pr
   await burger.focus();
   await page.keyboard.press('Enter');
   await expect(navigation).toBeVisible();
-  await expect(navigation.getByRole('link')).toHaveText(['Home', 'Manage children', 'Templates & assignments', 'Profile']);
+  await expect(navigation.getByRole('link')).toHaveText(['Home', 'Activity templates', 'Profile']);
   await expect(navigation.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page');
   await page.screenshot({ path: testInfo.outputPath('hamburger-menu.png'), fullPage: true });
   await navigation.getByRole('link', { name: 'Home', exact: true }).focus();
@@ -85,16 +87,14 @@ test('hamburger menu switches between the Home hero, children and the sign-in Pr
   await expect(page.getByRole('heading', { name: 'You’re signed in' })).toBeVisible();
   await expect(page.getByRole('contentinfo')).toHaveText('Every effort counts.');
   await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toHaveCount(0);
-  await expect(page.getByText('A place for your family’s routines, daily activities, and points.', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toHaveCount(0);
   await expect(page.getByText('parent@example.test', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Home', exact: true })).toHaveCount(0);
-  await navigate(page, 'Manage children');
-  await expect(page.getByRole('heading', { name: 'Manage children', exact: true })).toBeVisible();
-  await expect(page.getByRole('contentinfo')).toHaveText('Every effort counts.');
-  await expect(page.getByRole('heading', { name: 'You’re signed in' })).toHaveCount(0);
   await navigate(page, 'Home');
   await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'You’re signed in' })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
@@ -102,29 +102,33 @@ test('direct page URLs, refresh and browser history stay in sync with the menu',
   await fixture(page, { children: [currentChild] });
   await page.goto('/profile');
   await expect(page.getByRole('heading', { name: 'You’re signed in' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Manage children', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toHaveCount(0);
   await page.reload();
   await expect(page).toHaveURL('/profile');
   await expect(page.getByRole('heading', { name: 'You’re signed in' })).toBeVisible();
 
-  await navigate(page, 'Manage children');
-  await expect(page).toHaveURL('/children');
-  await expect(page.getByRole('button', { name: 'Manage Robin' })).toBeVisible();
-  await page.reload();
-  await expect(page).toHaveURL('/children');
-  await expect(page.getByRole('button', { name: 'Manage Robin' })).toBeVisible();
   await navigate(page, 'Home');
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toBeVisible();
-  await page.goBack();
-  await expect(page).toHaveURL('/children');
   await expect(page.getByRole('button', { name: 'Manage Robin' })).toBeVisible();
-  await page.goBack();
+  await page.reload();
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('button', { name: 'Manage Robin' })).toBeVisible();
+
+  // The old children list URL now redirects to Home, where the list lives.
+  await page.goto('/children');
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('button', { name: 'Manage Robin' })).toBeVisible();
+
+  await navigate(page, 'Profile');
   await expect(page).toHaveURL('/profile');
   await expect(page.getByRole('heading', { name: 'You’re signed in' })).toBeVisible();
-  await page.goForward();
-  await expect(page).toHaveURL('/children');
+  await page.goBack();
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Manage Robin' })).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL('/profile');
+  await expect(page.getByRole('heading', { name: 'You’re signed in' })).toBeVisible();
 
   await page.goto('/home');
   await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toBeVisible();
@@ -139,7 +143,7 @@ test('direct page URLs, refresh and browser history stay in sync with the menu',
 test('browser Back preserves an unconfirmed action until recovery completes', async ({ page }) => {
   const api = await fixture(page, { loseResponse: true });
   await page.goto('/profile');
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await page.getByRole('button', { name: 'Add child', exact: true }).click();
   await page.getByRole('textbox', { name: 'Nickname', exact: true }).fill('Nova');
   await page.getByRole('button', { name: 'Create child', exact: true }).click();
@@ -154,14 +158,14 @@ test('browser Back preserves an unconfirmed action until recovery completes', as
   expect(api.mutations).toHaveLength(2);
   expect(api.mutations[1]).toEqual(api.mutations[0]);
   expect(api.getChildren()).toHaveLength(1);
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await expect(page.getByRole('heading', { name: 'Nova', exact: true })).toBeVisible();
 });
 
 test('creates with ordered initial templates, renames, and schedules archive from Settings', async ({ page }, testInfo) => {
   const api = await fixture(page);
   await page.goto('/');
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await expect(page.getByText('No active children. Add a child to get started.')).toBeVisible();
   await page.getByRole('tab', { name: 'Archived (0)', exact: true }).click();
   await expect(page.getByText('No archived children.', { exact: true })).toBeVisible();
@@ -190,13 +194,11 @@ test('creates with ordered initial templates, renames, and schedules archive fro
   await page.screenshot({ path: testInfo.outputPath('profiles.png'), fullPage: true });
 });
 
-test('separates child management from Home and uses keyboard-accessible add/edit modals', async ({ page }, testInfo) => {
+test('shows child management on Home and uses keyboard-accessible add/edit modals', async ({ page }, testInfo) => {
   const api = await fixture(page, { children: [currentChild] });
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'Home', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Manage children', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Add child', exact: true })).toHaveCount(0);
-  await navigate(page, 'Manage children');
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Add child', exact: true }).click();
   const modal = page.getByRole('dialog', { name: 'Add child', exact: true });
   await expect(modal).toBeVisible();
@@ -223,14 +225,14 @@ test('separates child management from Home and uses keyboard-accessible add/edit
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Manage Robin' })).toBeFocused();
   expect(api.mutations).toHaveLength(0);
-  await navigate(page, 'Home');
-  await expect(page.getByRole('heading', { name: 'Manage children', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Small steps. Bright days.' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Children', exact: true })).toBeVisible();
 });
 
 test('recovers a lost response with the same action and intent, including after resume', async ({ page }) => {
   const api = await fixture(page, { loseResponse: true });
   await page.goto('/');
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await page.getByRole('button', { name: 'Add child', exact: true }).click();
   await page.getByRole('textbox', { name: 'Nickname', exact: true }).fill('Nova');
   await page.getByRole('button', { name: 'Create child', exact: true }).click();
@@ -238,7 +240,7 @@ test('recovers a lost response with the same action and intent, including after 
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Nickname', exact: true })).toBeDisabled();
-  await expect(page.locator('.child-profiles-heading button')).toBeDisabled();
+  await expect(page.locator('.child-profiles-add button')).toBeDisabled();
   await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
   await expect(page.getByText('parent@example.test')).toHaveCount(0);
   await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
@@ -255,7 +257,7 @@ for (const choice of ['Keep current', 'Apply my change']) {
   test(`compares stale results and supports ${choice}`, async ({ page }, testInfo) => {
     const api = await fixture(page, { children: [currentChild], stale: true });
     await page.goto('/');
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
     await page.getByRole('button', { name: 'Manage Robin' }).click();
     await page.getByRole('textbox', { name: 'Nickname', exact: true }).fill('My attempted nickname');
     await page.getByRole('button', { name: 'Save changes' }).click();
@@ -282,7 +284,7 @@ test('shows archived profiles, supports long names, and allows keyboard cancella
     { ...currentChild, id: 'archived-child', displayName: 'Past child', archiveEffectiveDate: '2026-11-08' },
   ] });
   await page.goto('/');
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await expect(page.getByRole('tab', { name: 'Active (1)', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('heading', { name: longName, exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Manage Past child' })).toHaveCount(0);
@@ -314,7 +316,7 @@ test('shows archived profiles, supports long names, and allows keyboard cancella
 test('offers read-error recovery and keeps an unconfirmed action through session rechecking', async ({ page }) => {
   const api = await fixture(page, { failRead: true, challengeWrite: true });
   await page.goto('/');
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await expect(page.getByText('Couldn’t load child profiles. Check your connection and try again.')).toBeVisible();
   await page.getByRole('button', { name: 'Reload profiles' }).click();
   await page.getByRole('button', { name: 'Add child', exact: true }).click();
@@ -331,14 +333,14 @@ test('offers read-error recovery and keeps an unconfirmed action through session
 test('local development saves profiles to real local D1 and persists them across reloads', async ({ page, request }, testInfo) => {
   const name = `Local ${testInfo.project.name} ${crypto.randomUUID().slice(0, 8)}`;
   await page.goto('http://127.0.0.1:4174/');
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await page.getByRole('button', { name: 'Add child', exact: true }).click();
   await page.getByRole('textbox', { name: 'Nickname', exact: true }).fill(name);
   await page.getByRole('checkbox', { name: 'Morning routine', exact: true }).check();
   await page.getByRole('button', { name: 'Create child', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toContainText(`Saved ${name}.`);
   await page.reload();
-  await navigate(page, 'Manage children');
+  await navigate(page, 'Home');
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   const list = await request.get('http://127.0.0.1:4174/api/children?includeArchived=true');
   const child = (await list.json()).children.find((item: Child) => item.displayName === name);

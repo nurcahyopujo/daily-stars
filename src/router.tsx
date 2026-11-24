@@ -1,4 +1,4 @@
-import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
 import { RootShell } from './features/auth/RootShell';
 import { ProfilePage } from './features/auth/ProfilePage';
 import { useSession } from './features/auth/session-context';
@@ -7,12 +7,16 @@ import { RuleSettings } from './features/children/RuleSettings';
 import { ChildDayRoute, ChildPrizesRoute, ChildReviewRoute, ChildAssignmentsRoute } from './features/children/child-routes';
 
 function HomePage() {
+  const { sessionExpired } = useSession();
   return (
-    <section className="welcome" aria-label="Home">
-      <p className="eyebrow">A little progress, every day</p>
-      <h1>Small steps.<br />Bright days.</h1>
-      <p className="intro">A place for your family’s routines, daily activities, and points.</p>
-    </section>
+    <>
+      <section className="welcome" aria-label="Home">
+        <p className="eyebrow">A little progress, every day</p>
+        <h1>Small steps.<br />Bright days.</h1>
+        <p className="intro">A place for your family’s routines, daily activities, and points.</p>
+      </section>
+      <ChildProfiles onSessionExpired={sessionExpired} />
+    </>
   );
 }
 
@@ -22,11 +26,6 @@ function NotFoundPage() {
       <h1>Page not found</h1><p>Choose a page from the main menu.</p>
     </section>
   );
-}
-
-function ChildProfilesPage() {
-  const { sessionExpired } = useSession();
-  return <ChildProfiles onSessionExpired={sessionExpired} />;
 }
 
 function RuleSettingsPage() {
@@ -46,8 +45,9 @@ const routeTree = rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/home', component: HomePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/profile', component: ProfilePage }),
-  createRoute({ getParentRoute: () => rootRoute, path: '/children', component: ChildProfilesPage }),
-  createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/day', validateSearch: dateSearch, component: ChildDayRoute }),
+  // The children list now lives on Home; keep the old URL working by redirecting it there.
+  createRoute({ getParentRoute: () => rootRoute, path: '/children', beforeLoad: () => { throw redirect({ to: '/' }); } }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId', validateSearch: dateSearch, component: ChildDayRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/prizes', component: ChildPrizesRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/review', validateSearch: dateSearch, component: ChildReviewRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/assignments', component: ChildAssignmentsRoute }),

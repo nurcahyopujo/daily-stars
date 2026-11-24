@@ -2,6 +2,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCap
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Link } from '@tanstack/react-router';
+import { BackLabel, backLinkClass } from './BackLink';
 import { useEffect, useRef, useState } from 'react';
 import type { ActivityReviewData, DateRange, OutcomeCounts } from '../../../shared/activity-review';
 import type { Child } from '../../../shared/profiles';
@@ -95,7 +96,7 @@ export function ActivityReview({ child, date, onSessionExpired }: { child: Child
 
   return (
     <section className="child-profiles activity-review" aria-labelledby="activity-review-title">
-      <Link to="/children/$childId/day" params={{ childId: child.id }} search={date ? { date } : {}}>← Back to day</Link>
+      <Link className={backLinkClass} to="/children/$childId" params={{ childId: child.id }} search={date ? { date } : {}}><BackLabel>{child.displayName}</BackLabel></Link>
       <h1 id="activity-review-title">{child.displayName}’s activity review</h1>
       <label htmlFor="activity-review-period">Review period</label>
       <Select

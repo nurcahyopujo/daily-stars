@@ -15,17 +15,15 @@ import { clearChildSave, clearRuleSave, resumeChildSave, resumeRuleSave, useChil
 
 const pages = [
   { id: 'home', label: 'Home', path: '/' },
-  { id: 'children', label: 'Manage children', path: '/children' },
   { id: 'templates', label: 'Activity templates', path: '/templates' },
   { id: 'profile', label: 'Profile', path: '/profile' },
 ] as const;
 
 function activePage(pathname: string) {
-  if (pathname === '/' || pathname === '/home') return 'home';
-  if (pathname.startsWith('/children')) return 'children';
   if (pathname.startsWith('/templates')) return 'templates';
   if (pathname.startsWith('/profile')) return 'profile';
-  return 'not-found';
+  // Home hosts the children list, so '/', '/home' and every '/children…' page belong to it.
+  return 'home';
 }
 
 export function RootShell() {
@@ -47,7 +45,9 @@ export function RootShell() {
     ? decodeURIComponent(ruleSave.intent.path.split('/')[3] ?? '') : null;
   // While a save is locked, show that feature's recovery UI. Keep the live route mounted when it
   // already is that feature (so an in-progress edit survives); override it only after navigating away.
-  const lockedPage = childSaveLocked ? 'children' : ruleSaveLocked && !assignmentLockChildId ? 'templates' : null;
+  // The children list lives on Home, so any '/' or '/children…' page already shows its recovery UI.
+  const onChildrenSurface = pathname === '/' || pathname === '/home' || pathname.startsWith('/children');
+  const templatesLocked = ruleSaveLocked && !assignmentLockChildId;
 
   // Close the menu when the route changes (menu links, back/forward, or in-app navigation).
   useEffect(() => { setMenuOpen(false); }, [pathname]);
@@ -114,7 +114,7 @@ export function RootShell() {
         <PopoverContent align="end" sideOffset={8} className="parent-navigation">
         <nav aria-label="Main menu">
           {pages.map((page) => {
-            const disabled = saveLocked || ((page.id === 'children' || page.id === 'templates') && session.status !== 'signed-in');
+            const disabled = saveLocked || (page.id === 'templates' && session.status !== 'signed-in');
             const current = menu === page.id ? 'page' : undefined;
             if (disabled) {
               return <a key={page.id} href={page.path} aria-current={current} aria-disabled="true"
@@ -151,10 +151,10 @@ export function RootShell() {
         </section>
       : assignmentLockChildId && pathname !== `/children/${assignmentLockChildId}/assignments`
         ? <ChildAssignments childId={assignmentLockChildId} onSessionExpired={sessionExpired} />
-      : lockedPage && menu !== lockedPage
-        ? (lockedPage === 'children'
-            ? <ChildProfiles onSessionExpired={sessionExpired} />
-            : <RuleSettings onSessionExpired={sessionExpired} />)
+      : templatesLocked && !pathname.startsWith('/templates')
+        ? <RuleSettings onSessionExpired={sessionExpired} />
+      : childSaveLocked && !onChildrenSurface
+        ? <ChildProfiles onSessionExpired={sessionExpired} />
       : <Outlet />}
     </main>
     <footer>Every effort counts.</footer>

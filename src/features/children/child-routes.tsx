@@ -9,7 +9,7 @@ import { Prizes } from './Prizes';
 import { ActivityReview } from './ActivityReview';
 import { ChildAssignments } from './ChildAssignments';
 
-const dayApi = getRouteApi('/children/$childId/day');
+const dayApi = getRouteApi('/children/$childId');
 const prizesApi = getRouteApi('/children/$childId/prizes');
 const reviewApi = getRouteApi('/children/$childId/review');
 const assignmentsApi = getRouteApi('/children/$childId/assignments');
@@ -22,7 +22,7 @@ function ChildGate({ childId, render }: { childId: string; render: (child: Child
   const child = data?.children.find((candidate) => candidate.id === childId);
 
   useEffect(() => {
-    if (data && !child) void navigate({ to: '/children' });
+    if (data && !child) void navigate({ to: '/' });
   }, [data, child, navigate]);
 
   if (data && child) return render(child, data.today);
@@ -39,7 +39,7 @@ export function ChildDayRoute() {
   const navigate = useNavigate();
   return <ChildGate childId={childId} render={(child, today) =>
     <ScoreDay key={child.id} child={child} today={today} date={date}
-      onDateChange={(next) => void navigate({ to: '/children/$childId/day', params: { childId }, search: { date: next }, replace: true })} />} />;
+      onDateChange={(next) => void navigate({ to: '/children/$childId', params: { childId }, search: { date: next }, replace: true })} />} />;
 }
 
 export function ChildPrizesRoute() {
