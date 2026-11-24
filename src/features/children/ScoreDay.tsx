@@ -12,7 +12,7 @@ import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } fr
 import type { Child } from '../../../shared/profiles';
 import type { Activity, Day, Score } from '../../../shared/scoring';
 import { requestJson } from './requests';
-import { clear, retry, submit, usePendingSave, type Settled } from './pending-save';
+import { useSaveFlow } from './save-flow';
 import { DayStars } from './StarBalance';
 
 // One day-outcome save per child at a time, keyed so saves for different children
@@ -191,21 +191,31 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
     child.archiveEffectiveDate && child.archiveEffectiveDate <= today
       ? new Date(Date.parse(child.archiveEffectiveDate + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10)
       : today;
-  const scoreKey = 'score:' + child.id;
-  const scoreSave = usePendingSave<ScoreIntent, void, Score>(scoreKey);
-  const resumedDate = scoreSave.status === 'saving' || scoreSave.status === 'uncertain' ? scoreSave.intent.date : undefined;
+  const flow = useSaveFlow<ScoreIntent, void, Score, Day>({
+    key: 'score:' + child.id,
+    request: async (intent, action) => {
+      await requestJson(intent.path, {
+        method: intent.method,
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': action },
+        body: JSON.stringify(intent.body),
+      });
+    },
+    // Apply my change over a conflict: resubmit the entry at the server's revision.
+    applyConflict: (intent, current) => ({ ...intent, body: { ...intent.body, expectedRevision: current.revision } }),
+  });
+  const resumedDate = flow.phase === 'saving' || flow.phase === 'recover' ? flow.intent?.date : undefined;
   const [date, setDate] = useState(
     resumedDate ?? (selectedDate && selectedDate >= child.startDate && selectedDate <= last ? selectedDate : last),
   );
   const [data, setData] = useState<Day | null>(null);
   const [reload, refresh] = useState(0);
   const [error, setError] = useState(
-    scoreSave.status === 'uncertain' ? 'Check the submitted score before continuing.' : '',
+    flow.phase === 'recover' ? 'Check the submitted score before continuing.' : '',
   );
   const [busy, setBusy] = useState(false);
-  // Pending recovery and conflict are read straight from the engine's state.
-  const pending = scoreSave.status === 'uncertain';
-  const conflict = scoreSave.status === 'conflict' ? scoreSave.intent : null;
+  // Pending recovery and conflict are read straight from the Save flow's phase.
+  const pending = flow.phase === 'recover';
+  const conflict = flow.phase === 'conflict' ? flow.intent ?? null : null;
   const [draft, setDraft] = useState<Draft | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [voidTarget, setVoidTarget] = useState<Score | null>(null);
@@ -246,48 +256,42 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
     }
     return null;
   }, []);
-  // Resolves to the reconciled day on success (used to flash the changed entry),
-  // or null on failure/conflict.
-  // Apply a save's settled outcome: success and conflict both reconcile to the
-  // server's truth; a plain rejection rolls back the optimistic guess; an uncertain
-  // outcome keeps the optimistic view and leaves the retry key in the engine.
-  const resolveOutcome = useCallback(async (
-    outcome: Settled<ScoreIntent, void, Score> | undefined,
-    atPath: string,
-    snapshot: Day | null,
-  ): Promise<Day | null> => {
-    if (!outcome) return null;
-    if (outcome.status === 'success') { const day = await reconcile(atPath); clear(scoreKey); return day; }
-    if (outcome.status === 'conflict') { setDraft(null); setConfirm(false); await reconcile(atPath); return null; }
-    if (outcome.status === 'rejected') { clear(scoreKey); setError(outcome.message); if (snapshot) setData(snapshot); return null; }
-    setError('Save not confirmed. Keep this page open and retry.');
-    return null;
-  }, [reconcile, scoreKey]);
+  // The Save flow owns the settle: success and conflict reconcile to the server's
+  // truth (success returns the fresh day so the changed entry can flash), rejection
+  // rolls back the optimistic guess, and recovery keeps the view with the retry key.
+  const settleError = useCallback((outcome: Awaited<ReturnType<typeof flow.run>>) => {
+    if (outcome.phase === 'success') flow.dismiss();
+    else if (outcome.phase === 'conflict') { setDraft(null); setConfirm(false); }
+    else if (outcome.phase === 'rejected') setError(outcome.message);
+    else if (outcome.phase === 'recover') setError('Save not confirmed. Keep this page open and retry.');
+    // Uses only stable setState dispatchers and the stable flow.dismiss.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const send = useCallback(async (intent: ScoreIntent, optimistic?: (prev: Day) => Day): Promise<Day | null> => {
-    const snapshot = optimistic ? dataRef.current : null;
-    if (optimistic) setData((prev) => (prev ? optimistic(prev) : prev));
     const atPath = pathRef.current;
     setBusy(true);
     setError('');
-    const outcome = await submit<ScoreIntent, void, Score>(scoreKey, intent, async (action) => {
-      await requestJson(intent.path, {
-        method: intent.method,
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': action },
-        body: JSON.stringify(intent.body),
-      });
+    const outcome = await flow.run(intent, {
+      optimistic: optimistic
+        ? () => {
+            const snapshot = dataRef.current;
+            setData((prev) => (prev ? optimistic(prev) : prev));
+            return () => { if (snapshot) setData(snapshot); };
+          }
+        : undefined,
+      reconcile: () => reconcile(atPath),
     });
-    try { return await resolveOutcome(outcome, atPath, snapshot); }
-    finally { setBusy(false); }
-  }, [scoreKey, resolveOutcome]);
+    setBusy(false);
+    settleError(outcome);
+    return outcome.phase === 'success' ? outcome.data : null;
+  }, [flow.run, reconcile, settleError]);
   // Recover an uncertain save: replay it with its original idempotency key.
   const recheck = useCallback(() => {
     const atPath = pathRef.current;
     setBusy(true);
     setError('');
-    const result = retry<ScoreIntent, void, Score>(scoreKey);
-    if (!result) { setBusy(false); return; }
-    void result.then((outcome) => resolveOutcome(outcome, atPath, null)).finally(() => setBusy(false));
-  }, [scoreKey, resolveOutcome]);
+    void flow.retry({ reconcile: () => reconcile(atPath) }).then(settleError).finally(() => setBusy(false));
+  }, [flow.retry, reconcile, settleError]);
   const save = useCallback((
     method: string,
     stream: string,
@@ -367,7 +371,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
           <div className="score-actions">
             <Button
               onClick={() => {
-                clear(scoreKey);
+                flow.dismiss();
                 setError('');
               }}
             >
@@ -376,10 +380,9 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
             {current.outcome !== 'void' && (
               <Button
                 onClick={() => {
-                  void send({
-                    ...conflict,
-                    body: { ...conflict.body, expectedRevision: current.revision },
-                  });
+                  setBusy(true);
+                  setError('');
+                  void flow.applyOverConflict().then(settleError).finally(() => setBusy(false));
                 }}
               >
                 Apply my change

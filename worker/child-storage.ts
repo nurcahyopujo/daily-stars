@@ -2,6 +2,7 @@ import type { Child, ChildIntent, TemplateSummary, TemplateVersion } from '../sh
 import type { Parent } from './auth.ts';
 import { dayBounds, jakartaToday, nextDate } from './calendar.ts';
 import { ApiError } from './http.ts';
+import { fingerprintOf, findReceipt, saveUnconfirmed, staleEdit } from './mutation.ts';
 
 const childColumns = `id, display_name AS displayName, start_date AS startDate,
   archive_effective_date AS archiveEffectiveDate, revision`;
@@ -48,30 +49,18 @@ export async function listTemplates(db: D1Database, today: string): Promise<Temp
   return [...summaries.values()];
 }
 
-type Receipt = { fingerprint: string; status: number; result_json: string };
 export type SavedChild = { status: number; child: Child };
-
-async function receipt(db: D1Database, actor: string, action: string, fingerprint: string): Promise<SavedChild | null> {
-  const row = await db.prepare(`SELECT fingerprint, status, result_json FROM mutation_receipts
-    WHERE actor_id = ? AND action_id = ?`).bind(actor, action).first<Receipt>();
-  if (!row) return null;
-  if (row.fingerprint !== fingerprint) {
-    throw new ApiError(409, 'ACTION_REUSED', 'This action ID was already used for different input.');
-  }
-  return { status: row.status, child: JSON.parse(row.result_json) };
-}
-
-async function fingerprintOf(intent: ChildIntent) {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(intent)));
-  return Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
 
 export async function saveChild(
   db: D1Database, parent: Parent, intent: ChildIntent, action: string,
   clock: () => Date = () => new Date(),
 ): Promise<SavedChild> {
   const fingerprint = await fingerprintOf(intent);
-  const replay = await receipt(db, parent.sub, action, fingerprint);
+  const recall = async (): Promise<SavedChild | null> => {
+    const r = await findReceipt(db, parent.sub, action, fingerprint);
+    return r ? { status: r.status, child: r.result as Child } : null;
+  };
+  const replay = await recall();
   if (replay) return replay;
 
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -82,9 +71,9 @@ export async function saveChild(
     if (intent.kind === 'edit' && !previous) throw new ApiError(404, 'NOT_FOUND', 'Child not found.');
     if (intent.kind === 'edit' && previous?.revision !== intent.expectedRevision) {
       // A parallel retry may have committed since our first receipt read.
-      const saved = await receipt(db, parent.sub, action, fingerprint);
+      const saved = await recall();
       if (saved) return saved;
-      throw new ApiError(409, 'STALE_EDIT', 'This child was changed by another save. Review the current profile.', previous);
+      staleEdit('This child was changed by another save. Review the current profile.', previous);
     }
     const child: Child = intent.kind === 'create' ? {
       id: crypto.randomUUID(), displayName: intent.displayName, startDate: today,
@@ -134,13 +123,13 @@ export async function saveChild(
       return { status, child };
     } catch (error) {
       // Always recover from the primary before deciding whether an error means conflict or rollback.
-      const saved = await receipt(db, parent.sub, action, fingerprint);
+      const saved = await recall();
       if (saved) return saved;
       if (intent.kind === 'edit') {
         const current = await getChild(db, intent.childId);
         if (!current) throw new ApiError(404, 'NOT_FOUND', 'Child not found.');
         if (current.revision !== intent.expectedRevision) {
-          throw new ApiError(409, 'STALE_EDIT', 'This child was changed by another save. Review the current profile.', current);
+          staleEdit('This child was changed by another save. Review the current profile.', current);
         }
       }
       const message = error instanceof Error ? error.message : '';
@@ -150,8 +139,8 @@ export async function saveChild(
         && !await templatesEligible(db, intent.initialTemplateIds, today)) {
         throw new ApiError(422, 'INVALID_TEMPLATES', 'A selected template is no longer available today. Review the templates.');
       }
-      throw new ApiError(503, 'SAVE_UNCONFIRMED', 'Save not confirmed. Check / retry with the same action ID.');
+      saveUnconfirmed();
     }
   }
-  throw new ApiError(503, 'SAVE_UNCONFIRMED', 'Save not confirmed. Check / retry.');
+  saveUnconfirmed('Save not confirmed. Check / retry.');
 }

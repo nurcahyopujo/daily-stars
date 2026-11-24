@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { classifyFailure } from '../../../shared/mutations';
 import { RequestError } from './requests';
 
 // ─── Pending save ───────────────────────────────────────────────────────────
@@ -58,12 +59,17 @@ async function track<I, R, C>(key: string, intent: I, action: string, run: (acti
     const result = await run(action);
     next = { status: 'success', intent, result };
   } catch (error) {
-    if (error instanceof RequestError && error.code === 'STALE_EDIT') {
-      next = { status: 'conflict', intent, current: error.current as C };
-    } else if (error instanceof RequestError && error.status >= 400 && error.status < 500 && error.status !== 401) {
-      next = { status: 'rejected', intent, message: error.message };
+    // Classify against the shared mutation-status contract so the client's
+    // settle stays in lock-step with the worker's thrown codes/statuses.
+    const { kind, signInRequired } = error instanceof RequestError
+      ? classifyFailure(error.status, error.code)
+      : { kind: 'uncertain' as const, signInRequired: false };
+    if (kind === 'conflict') {
+      next = { status: 'conflict', intent, current: (error as RequestError).current as C };
+    } else if (kind === 'rejected') {
+      next = { status: 'rejected', intent, message: (error as RequestError).message };
     } else {
-      next = { status: 'uncertain', intent, signInRequired: error instanceof RequestError && error.status === 401 };
+      next = { status: 'uncertain', intent, signInRequired };
     }
   }
   // A newer submit to this key has superseded us: drop this stale outcome.

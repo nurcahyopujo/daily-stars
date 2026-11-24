@@ -57,3 +57,9 @@ An in-flight parent mutation tracked for recovery. It carries an idempotency act
 
 **Activity review**:
 A parent's summary of one child's scheduled activity outcomes over a period, used to choose a routine to praise or practice.
+
+**Save flow**:
+The client module owning a single parent mutation's lifecycle over a *Pending save*: optimistic update, settle (success, rejected, conflict, or uncertain), reconcile to server truth, and recovery. It presents one derived phase to a screen so no screen re-implements the settle, lock, or retry handling.
+
+**Idempotent mutation**:
+The worker module owning a parent write's server contract: action-id receipt replay, optimistic-concurrency revision check, guarded retry, and the status outcomes a *Save flow* interprets (stale edit, unconfirmed save). Each write route supplies only its revision lookup and its storage write.

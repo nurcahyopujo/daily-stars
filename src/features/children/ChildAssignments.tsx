@@ -5,8 +5,9 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { BackLabel, backLinkClass } from './BackLink';
 import { useEffect, useRef, useState } from 'react';
 import { nextDate } from '../../../worker/calendar';
-import type { AssignmentDetail, TemplateSummary } from '../../../shared/profiles';
-import { clearRuleSave, requestJson, RequestError, retryRule, submitRule, useRuleSave } from './requests';
+import type { AssignmentDetail, RuleSave, TemplateSummary } from '../../../shared/profiles';
+import { requestJson, RequestError, RULE_SAVE_KEY, ruleRequest, type RuleConflict, type RuleIntent } from './requests';
+import { useSaveFlow } from './save-flow';
 import { TemplatePicker } from './TemplatePicker';
 import { useHouseholdProfiles } from './useHouseholdProfiles';
 import './child-profiles.css';
@@ -44,15 +45,16 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
   const [startToday, setStartToday] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [saved, setSaved] = useState<{ label: string; effectiveDate: string } | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const save = useRuleSave();
   const path = `/api/children/${encodeURIComponent(childId)}/assignments`;
-  // The rule-save store is shared with the templates page; only react to saves for this child.
-  const ownsSave = 'intent' in save && save.intent.path === path;
-  const locked = ownsSave && (save.status === 'saving' || save.status === 'uncertain');
-  const conflict = ownsSave && save.status === 'conflict' && !('affectedChildren' in save.current)
-    ? save.current : undefined;
-  const frozen = locked || Boolean(conflict);
+  // The rule key is shared with the templates page; `owns` masks the flow to this child's save.
+  const flow = useSaveFlow<RuleIntent, RuleSave, RuleConflict>({
+    key: RULE_SAVE_KEY, request: ruleRequest, owns: (intent) => intent.path === path,
+  });
+  const frozen = flow.frozen;
+  const conflict = flow.phase === 'conflict' && flow.conflict && !('affectedChildren' in flow.conflict)
+    ? flow.conflict : undefined;
 
   const selectedAssignments = startToday ? additions : ids;
   const effectiveDate = startToday ? today : tomorrow;
@@ -94,11 +96,13 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
     return () => controller.abort();
   }, [path, reloadKey, onSessionExpired]);
 
-  useEffect(() => {
-    if (!ownsSave) return;
-    if (save.status === 'success') { void reload(); setReloadKey(key => key + 1); }
-    if (save.status === 'uncertain' && save.signInRequired) onSessionExpired();
-  }, [save, ownsSave, reload, onSessionExpired]);
+  function handle(outcome: Awaited<ReturnType<typeof flow.run>>, label: string) {
+    if (outcome.phase === 'success') {
+      setSaved({ label, effectiveDate: outcome.result.effectiveDate });
+      void reload();
+      setReloadKey(key => key + 1);
+    } else if (outcome.phase === 'recover' && outcome.signInRequired) onSessionExpired();
+  }
 
   function toggleStartToday(checked: boolean) {
     if (!detail) return;
@@ -111,11 +115,17 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
     }
   }
 
-  function submit(reviewedRevision?: number) {
+  async function submit(reviewedRevision?: number) {
     if (!detail || frozen && reviewedRevision === undefined) return;
     const expectedRevision = reviewedRevision ?? (detail.pending ?? detail.current)?.revision;
-    void submitRule({ path, method: 'PUT', label: `Assignments for ${child?.displayName ?? 'child'}`,
-      body: { expectedRevision, templateIds: selectedAssignments, ...(startToday ? { startToday } : {}) } });
+    const label = `Assignments for ${child?.displayName ?? 'child'}`;
+    setSaved(null);
+    handle(await flow.run({ path, method: 'PUT', label,
+      body: { expectedRevision, templateIds: selectedAssignments, ...(startToday ? { startToday } : {}) } }), label);
+  }
+  function recheck() {
+    const label = flow.intent?.label ?? '';
+    void flow.retry().then(outcome => handle(outcome, label));
   }
 
   if (error) return <section className="child-profiles"><div role="alert">
@@ -161,7 +171,7 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
 
         {!eligible
           ? <p role="note" className="assign-archived">This child is archived and can’t receive assignment changes.</p>
-          : <form onSubmit={event => { event.preventDefault(); submit(); }}>
+          : <form onSubmit={event => { event.preventDefault(); void submit(); }}>
               <fieldset disabled={frozen}>
                 <h3 className="assign-editor-title">Change the schedule</h3>
                 <label className="assign-toggle">
@@ -183,9 +193,9 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
             </form>}
       </>}
 
-    {ownsSave && save.status === 'saving' && <p role="status">Saving {save.intent.label}…</p>}
-    {ownsSave && save.status === 'rejected' && <div className="child-profiles-save"><p role="alert">{save.message}</p>
-      <Button type="button" className="modal-cancel" onClick={() => { clearRuleSave(); void reload(); }}>Reload latest assignments</Button>
+    {flow.phase === 'saving' && flow.intent && <p role="status">Saving {flow.intent.label}…</p>}
+    {flow.phase === 'rejected' && <div className="child-profiles-save"><p role="alert">{flow.error}</p>
+      <Button type="button" className="modal-cancel" onClick={() => { flow.dismiss(); void reload(); }}>Reload latest assignments</Button>
     </div>}
     {conflict && <div className="child-profiles-save">
       <div>
@@ -193,14 +203,14 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
         <p>{assignmentNames((conflict.pending ?? conflict.current)?.templateIds ?? [], tomorrow)}</p>
         <p><strong>Your change</strong></p>
         <p>{startToday ? 'Add today · ' : ''}{assignmentNames(selectedAssignments, effectiveDate)}</p>
-        <Button type="button" onClick={() => submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
+        <Button type="button" onClick={() => void submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
       </div>
-      <Button type="button" className="modal-cancel" onClick={() => { clearRuleSave(); void reload(); }}>Keep current</Button>
+      <Button type="button" className="modal-cancel" onClick={() => { flow.dismiss(); void reload(); }}>Keep current</Button>
     </div>}
-    {ownsSave && save.status === 'uncertain' && <div role="alert">
-      <p>Save not confirmed for {save.intent.label}. Keep this page open to retain the retry key.</p>
-      <Button type="button" onClick={() => void retryRule()}>Check / retry</Button>
+    {flow.phase === 'recover' && flow.intent && <div role="alert">
+      <p>Save not confirmed for {flow.intent.label}. Keep this page open to retain the retry key.</p>
+      <Button type="button" onClick={() => recheck()}>Check / retry</Button>
     </div>}
-    {ownsSave && save.status === 'success' && <p role="status">Saved {save.intent.label}. Effective {save.result.effectiveDate} · Jakarta.</p>}
+    {saved && <p role="status">Saved {saved.label}. Effective {saved.effectiveDate} · Jakarta.</p>}
   </section>;
 }

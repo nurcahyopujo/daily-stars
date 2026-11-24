@@ -5,7 +5,7 @@ import { BackLabel, backLinkClass } from './BackLink';
 import { useEffect, useState } from 'react';
 import type { Child } from '../../../shared/profiles';
 import { requestJson } from './requests';
-import { clear, retry, submit, usePendingSave, type Settled } from './pending-save';
+import { useSaveFlow } from './save-flow';
 import { Stars } from './ScoreDay';
 import { StarBalance, GoldStar } from './StarBalance';
 
@@ -25,10 +25,17 @@ export function Prizes({ child }: { child: Child }) {
   const [cost, setCost] = useState('');
   const [message, setMessage] = useState('');
   const [reload, refresh] = useState(0);
-  const prizeKey = 'prize:' + child.id;
-  const prizeSave = usePendingSave<Action, null, unknown>(prizeKey);
-  const busy = prizeSave.status === 'saving';
-  const pending = prizeSave.status === 'uncertain' ? prizeSave.intent : undefined;
+  // Redemptions carry their idempotency in the URL (a per-redeem UUID, or the
+  // redemption id for a void), so the request repeats safely on retry without an
+  // Idempotency-Key header. The Save flow tracks the pending save for recovery.
+  const flow = useSaveFlow<Action, null, unknown>({
+    key: 'prize:' + child.id,
+    request: (action) => requestJson(action.path, {
+      method: action.method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body),
+    }).then(() => null),
+  });
+  const busy = flow.busy;
+  const pending = flow.phase === 'recover';
   useEffect(() => {
     const controller = new AbortController();
     requestJson<Account>(path, { signal: controller.signal }).then(account => { if (!controller.signal.aborted) setData(account); }).catch(() => {
@@ -36,35 +43,27 @@ export function Prizes({ child }: { child: Child }) {
     });
     return () => controller.abort();
   }, [path, reload]);
-  // Redemptions carry their idempotency in the URL (a per-redeem UUID, or the
-  // redemption id for a void), so the request repeats safely on retry without an
-  // Idempotency-Key header. The engine tracks the pending save for recovery.
-  function resolve(action: Action, outcome: Settled<Action, null, unknown>) {
-    if (outcome.status === 'success') {
-      clear(prizeKey);
+  function resolve(outcome: Awaited<ReturnType<typeof flow.run>>, method: string) {
+    if (outcome.phase === 'success') {
+      flow.dismiss();
       setLabel('');
       setCost('');
-      setMessage(action.method === 'PATCH' ? 'Redemption voided. Stars returned.' : 'Prize redeemed.');
+      setMessage(method === 'PATCH' ? 'Redemption voided. Stars returned.' : 'Prize redeemed.');
       setData(null);
       refresh(n => n + 1);
-    } else if (outcome.status === 'rejected' || outcome.status === 'conflict') {
-      clear(prizeKey);
-      setMessage(outcome.status === 'rejected' ? outcome.message : 'Could not complete. Reload and try again.');
+    } else if (outcome.phase === 'rejected' || outcome.phase === 'conflict') {
+      flow.dismiss();
+      setMessage(outcome.phase === 'rejected' ? outcome.message : 'Could not complete. Reload and try again.');
       refresh(n => n + 1);
-    } else setMessage('Save not confirmed. Keep this page open and check / retry.');
+    } else if (outcome.phase === 'recover') setMessage('Save not confirmed. Keep this page open and check / retry.');
   }
   async function send(action: Action) {
     setMessage('');
-    const outcome = await submit<Action, null, unknown>(prizeKey, action, async () => {
-      await requestJson(action.path, { method: action.method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body) });
-      return null;
-    });
-    if (outcome) resolve(action, outcome);
+    resolve(await flow.run(action), action.method);
   }
   function recheck() {
-    if (!pending) return;
-    const result = retry<Action, null, unknown>(prizeKey);
-    if (result) void result.then(outcome => { if (outcome) resolve(pending, outcome); });
+    const method = flow.intent?.method ?? 'PUT';
+    void flow.retry().then(outcome => resolve(outcome, method));
   }
   const exceedsBalance = data !== null && Number(cost) > data.balance;
   return <section className="child-profiles score-day prizes-page">

@@ -5,8 +5,9 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { BackLabel, backLinkClass } from './BackLink';
 import { nextDate } from '../../../worker/calendar';
-import type { TemplateDetail, TemplateVersion } from '../../../shared/profiles';
-import { clearRuleSave, requestJson, RequestError, retryRule, submitRule, useRuleSave } from './requests';
+import type { RuleSave, TemplateDetail, TemplateVersion } from '../../../shared/profiles';
+import { requestJson, RequestError, RULE_SAVE_KEY, ruleRequest, type RuleConflict, type RuleIntent } from './requests';
+import { useSaveFlow } from './save-flow';
 import { moveItem } from './TemplatePicker';
 import { useHouseholdProfiles } from './useHouseholdProfiles';
 import './child-profiles.css';
@@ -62,23 +63,21 @@ export function TemplateEditor({ target, onSessionExpired, onSaved }: { target: 
   const [validation, setValidation] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
-  // Only a save this editor instance submitted should navigate away on success — never a stale
-  // success left in the shared store by an earlier edit of the same template.
-  const submitted = useRef(false);
   const path = pathFor(target);
-  const save = useRuleSave();
-  // The rule-save store is shared with the assignments page; only react to this template's saves.
-  const ownsSave = 'intent' in save && save.intent.path === path;
-  const locked = ownsSave && (save.status === 'saving' || save.status === 'uncertain');
-  const conflict = ownsSave && save.status === 'conflict' && 'affectedChildren' in save.current ? save.current : undefined;
-  const frozen = locked || Boolean(conflict);
+  // The rule key is shared with the assignments page; `owns` masks the flow to this template's save.
+  const flow = useSaveFlow<RuleIntent, RuleSave, RuleConflict>({
+    key: RULE_SAVE_KEY, request: ruleRequest, owns: (intent) => intent.path === path,
+  });
+  const locked = flow.phase === 'saving' || flow.phase === 'recover';
+  const conflict = flow.phase === 'conflict' && flow.conflict && 'affectedChildren' in flow.conflict ? flow.conflict : undefined;
+  const frozen = flow.frozen;
   const effectiveDate = target.kind === 'create' ? today : tomorrow;
 
   // A fresh open clears any stale terminal save state so the editor starts clean. Only an in-flight
   // save (RootShell force-render recovery) is preserved — those are the only states RootShell
   // force-renders for; a conflict/success/rejection in the store on mount is always stale.
   useEffect(() => {
-    if (!(ownsSave && (save.status === 'saving' || save.status === 'uncertain'))) clearRuleSave();
+    if (!locked) flow.dismiss();
     // Run once on mount for this target.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path]);
@@ -114,48 +113,49 @@ export function TemplateEditor({ target, onSessionExpired, onSaved }: { target: 
     return () => controller.abort();
   }, [path, target.kind, reloadKey, onSessionExpired]);
 
-  // On a confirmed save, return to the list — the saved confirmation surfaces there.
-  useEffect(() => {
-    if (!ownsSave) return;
-    if (save.status === 'success' && submitted.current) onSaved?.();
-    if (save.status === 'uncertain' && save.signInRequired) onSessionExpired();
-  }, [save, ownsSave, onSaved, onSessionExpired]);
+  function afterSave(outcome: Awaited<ReturnType<typeof flow.run>>) {
+    // A confirmed save returns to the list (the saved confirmation surfaces there); a lapsed
+    // session escalates to sign-in. Only the instance that ran the save reaches here, so no
+    // stale shared-store success can trigger a spurious navigation.
+    if (outcome.phase === 'success') onSaved?.();
+    else if (outcome.phase === 'recover' && outcome.signInRequired) onSessionExpired();
+  }
 
-  function submit(reviewedRevision?: number) {
+  async function submit(reviewedRevision?: number) {
     if (!draft || locked || (conflict && reviewedRevision === undefined)) return;
     setValidation('');
     const latest = draft.detail?.pending ?? draft.detail?.current;
     const operation = latest?.retired ? 'cancelRetirement' : draft.retire ? 'retire' : 'save';
     const expectedRevision = reviewedRevision ?? latest?.revision;
+    let intent: RuleIntent;
     if (operation !== 'save') {
-      submitted.current = true;
-      void submitRule({ path, method: 'PUT', label: draft.name, body: { expectedRevision, operation } });
-      return;
+      intent = { path, method: 'PUT', label: draft.name, body: { expectedRevision, operation } };
+    } else {
+      if (!draft.activities.length) { setValidation('Add at least one activity to save.'); return; }
+      const invalid = draft.activities.find(activity => !activity.label.trim() || !activity.weekdays.length
+        || !Number.isInteger(Number(activity.reward)) || Number(activity.reward) < 1 || Number(activity.reward) > 999
+        || !Number.isInteger(Number(activity.penalty)) || Number(activity.penalty) < 0 || Number(activity.penalty) > 999);
+      if (invalid) {
+        setExpanded(invalid.key);
+        setValidation(`Check activity ${draft.activities.indexOf(invalid) + 1}. Enter a label, a reward of 1–999 whole stars, an optional penalty of 0–999 whole stars, and at least one weekday.`);
+        return;
+      }
+      intent = { path, method: target.kind === 'create' ? 'POST' : 'PUT', label: draft.name,
+        body: { expectedRevision, name: draft.name, activities: draft.activities.map(activity => ({
+          id: activity.id, label: activity.label, rewardPoints: Number(activity.reward),
+          penaltyPoints: activity.penalty === '' ? undefined : Number(activity.penalty), weekdays: activity.weekdays,
+        })) } };
     }
-    if (!draft.activities.length) { setValidation('Add at least one activity to save.'); return; }
-    const invalid = draft.activities.find(activity => !activity.label.trim() || !activity.weekdays.length
-      || !Number.isInteger(Number(activity.reward)) || Number(activity.reward) < 1 || Number(activity.reward) > 999
-      || !Number.isInteger(Number(activity.penalty)) || Number(activity.penalty) < 0 || Number(activity.penalty) > 999);
-    if (invalid) {
-      setExpanded(invalid.key);
-      setValidation(`Check activity ${draft.activities.indexOf(invalid) + 1}. Enter a label, a reward of 1–999 whole stars, an optional penalty of 0–999 whole stars, and at least one weekday.`);
-      return;
-    }
-    submitted.current = true;
-    void submitRule({ path, method: target.kind === 'create' ? 'POST' : 'PUT', label: draft.name,
-      body: { expectedRevision, name: draft.name, activities: draft.activities.map(activity => ({
-        id: activity.id, label: activity.label, rewardPoints: Number(activity.reward),
-        penaltyPoints: activity.penalty === '' ? undefined : Number(activity.penalty), weekdays: activity.weekdays,
-      })) },
-    });
+    afterSave(await flow.run(intent));
   }
+  function recheck() { void flow.retry().then(afterSave); }
 
   function editActivity(activity: DraftActivity, patch: Partial<DraftActivity>) {
     if (!draft) return;
     setDraft({ ...draft, activities: draft.activities.map(item => item.key === activity.key ? { ...item, ...patch } : item) });
   }
 
-  function reload() { clearRuleSave(); setReloadKey(key => key + 1); }
+  function reload() { flow.dismiss(); setReloadKey(key => key + 1); }
 
   const pendingRetirement = draft?.detail?.pending?.retired;
   const retired = draft?.detail?.current?.retired;
@@ -205,7 +205,7 @@ export function TemplateEditor({ target, onSessionExpired, onSaved }: { target: 
 
         {retired
           ? <p role="note" className="assign-archived">This template was retired from {draft.detail?.current?.effectiveDate}. Earlier dates keep their rules.</p>
-          : <form onSubmit={event => { event.preventDefault(); submit(); }}>
+          : <form onSubmit={event => { event.preventDefault(); void submit(); }}>
           <fieldset disabled={frozen}>
             {editable && <>
               <label className="tpl-name">Template name
@@ -299,8 +299,8 @@ export function TemplateEditor({ target, onSessionExpired, onSaved }: { target: 
           {validation && <p role="alert" className="tpl-validation">{validation}</p>}
         </form>}
 
-        {ownsSave && save.status === 'saving' && <p role="status" className="tpl-savestatus">Saving {save.intent.label}…</p>}
-        {ownsSave && save.status === 'rejected' && <div className="child-profiles-save"><p role="alert">{save.message}</p>
+        {flow.phase === 'saving' && flow.intent && <p role="status" className="tpl-savestatus">Saving {flow.intent.label}…</p>}
+        {flow.phase === 'rejected' && <div className="child-profiles-save"><p role="alert">{flow.error}</p>
           <Button type="button" className="tpl-cancel" onClick={reload}>Reload latest template</Button>
         </div>}
         {conflict && <div className="child-profiles-save">
@@ -310,13 +310,13 @@ export function TemplateEditor({ target, onSessionExpired, onSaved }: { target: 
             <p className="tpl-conflict-mine"><strong>Your change</strong></p>
             <p>{draft.name} · {draft.detail?.pending?.retired ? 'Cancel retirement'
               : draft.retire ? 'Retire template' : draft.activities.map(activity => `${activity.label} (+${activity.reward})`).join(', ')}</p>
-            <Button type="button" onClick={() => submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
+            <Button type="button" onClick={() => void submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
           </div>
           <Button type="button" className="tpl-cancel" onClick={reload}>Keep current</Button>
         </div>}
-        {ownsSave && save.status === 'uncertain' && <div role="alert" className="child-profiles-save">
-          <p>Save not confirmed for {save.intent.label}. Keep this page open to retain the retry key.</p>
-          <Button type="button" onClick={() => void retryRule()}>Check / retry</Button>
+        {flow.phase === 'recover' && flow.intent && <div role="alert" className="child-profiles-save">
+          <p>Save not confirmed for {flow.intent.label}. Keep this page open to retain the retry key.</p>
+          <Button type="button" onClick={() => recheck()}>Check / retry</Button>
         </div>}
       </>}
   </section>;

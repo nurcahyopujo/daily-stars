@@ -2,6 +2,7 @@ import { scheduledActivities, type Score } from '../shared/scoring.ts';
 import { assignedTemplates, readScheduledTemplates } from './schedule-storage.ts';
 import type { Parent } from './auth.ts';
 import { ApiError, json } from './http.ts';
+import { fingerprintOf, findReceipt, staleEdit } from './mutation.ts';
 
 function invalid(message: string): never {
   throw new ApiError(422, 'INVALID_INPUT', message);
@@ -63,19 +64,11 @@ export async function scoring(
         ? ['expectedRevision', 'void']
         : ['expectedRevision', 'points', 'reason'];
   if (Object.keys(input).some((k) => !allowed.includes(k))) invalid('Unexpected entry field.');
-  const fingerprint = JSON.stringify([child, date, suffix, request.method, Object.entries(input).sort()]);
-  async function replay() {
-    const receipt = await db
-      .prepare(
-        'SELECT fingerprint,status,result_json FROM mutation_receipts WHERE actor_id=? AND action_id=?',
-      )
-      .bind(parent.sub, key)
-      .first<{ fingerprint: string; status: number; result_json: string }>();
-    if (!receipt) return null;
-    if (receipt.fingerprint !== fingerprint)
-      throw new ApiError(409, 'ACTION_REUSED', 'Action ID already used.');
-    return json(JSON.parse(receipt.result_json), receipt.status);
-  }
+  const fingerprint = await fingerprintOf([child, date, suffix, request.method, Object.entries(input).sort()]);
+  const replay = async () => {
+    const receipt = await findReceipt(db, parent.sub, key, fingerprint);
+    return receipt ? json(receipt.result, receipt.status) : null;
+  };
   const previous = await replay();
   if (previous) return previous;
   const stream = create ? 'one-offs/' + crypto.randomUUID() : suffix;
@@ -85,7 +78,7 @@ export async function scoring(
   if (typeof expected !== 'number' || !Number.isSafeInteger(expected) || expected < 0)
     invalid('Invalid revision.');
   if (expected !== (current?.revision ?? 0))
-    throw new ApiError(409, 'STALE_EDIT', 'Entry changed. Review the latest score.', current);
+    staleEdit('Entry changed. Review the latest score.', current);
   if (current?.outcome === 'void') invalid('This entry has been voided.');
   let points: number,
     outcome: string,
@@ -131,7 +124,7 @@ export async function scoring(
       .bind(child, date, stream)
       .first<{ revision: number }>();
     if (latest && latest.revision > expected)
-      throw new ApiError(409, 'STALE_EDIT', 'Entry changed. Review the latest score.');
+      staleEdit('Entry changed. Review the latest score.');
     throw error;
   }
   return json(result, status);

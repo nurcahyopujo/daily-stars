@@ -7,9 +7,9 @@ import { loadSession, type SessionState } from './session';
 import { SessionProvider } from './session-context';
 import './parent-access.css';
 import { ChildProfiles } from '../children/ChildProfiles';
-import { TemplateEditor, type TemplateTarget } from '../children/TemplateEditor';
+import { TemplateEditor } from '../children/TemplateEditor';
 import { ChildAssignments } from '../children/ChildAssignments';
-import { useChildSave, useRuleSave } from '../children/requests';
+import { ruleRecovery, useChildSave, useRuleSave } from '../children/requests';
 import { clearAll, resume as resumeSaves } from '../children/pending-save';
 
 const pages = [
@@ -35,27 +35,16 @@ export function RootShell() {
   const childSave = useChildSave();
   const ruleSave = useRuleSave();
   const childSaveLocked = ['saving', 'uncertain', 'conflict'].includes(childSave.status);
-  const ruleSaveLocked = ruleSave.status === 'saving' || ruleSave.status === 'uncertain';
-  const saveLocked = childSaveLocked || ruleSaveLocked;
+  // Which editor, if any, a locked rule save belongs to — the intent-path parsing that
+  // screens used to duplicate now lives behind one shared helper.
+  const recovery = ruleRecovery(ruleSave);
+  const saveLocked = childSaveLocked || recovery !== null;
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const signInPath = useRouterState({ select: (state) => state.location.href });
   const menu = activePage(pathname);
-  // A locked rule save is either an assignment edit (scoped to one child) or a template edit.
-  const assignmentLockChildId = ruleSaveLocked && 'intent' in ruleSave && ruleSave.intent.path.startsWith('/api/children/')
-    ? decodeURIComponent(ruleSave.intent.path.split('/')[3] ?? '') : null;
-  // A locked template save maps back to its editor page: POST /api/templates → /templates/new,
-  // PUT /api/templates/{id} → /templates/{id}. The id segment is already URL-encoded in both the
-  // save path and the route, so they compare directly.
-  const templateLockPath = ruleSaveLocked && 'intent' in ruleSave && ruleSave.intent.path.startsWith('/api/templates')
-    ? ruleSave.intent.path : null;
-  const templateLockSeg = templateLockPath?.split('/');
-  const templateLockTarget: TemplateTarget | null = templateLockPath
-    ? (templateLockSeg!.length > 3 && templateLockSeg![3]
-        ? { kind: 'edit', id: decodeURIComponent(templateLockSeg![3]) } : { kind: 'create' })
-    : null;
-  const templateEditorPath = templateLockPath
-    ? (templateLockSeg!.length > 3 && templateLockSeg![3] ? `/templates/${templateLockSeg![3]}` : '/templates/new')
-    : null;
+  const assignmentLockChildId = recovery?.kind === 'assignment' ? recovery.childId : null;
+  const templateLockTarget = recovery?.kind === 'template' ? recovery.target : null;
+  const templateEditorPath = recovery?.kind === 'template' ? recovery.editorPath : null;
   // While a save is locked, show that feature's recovery UI. Keep the live route mounted when it
   // already is that feature (so an in-progress edit survives); override it only after navigating away.
   // The children list lives on Home, so any '/' or '/children…' page already shows its recovery UI.

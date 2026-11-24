@@ -1,5 +1,5 @@
 import type { AssignmentDetail, Child, ChildIntent, RuleSave, TemplateDetail } from '../../../shared/profiles';
-import { clear, peek, retry, submit, usePendingSave, type SaveState } from './pending-save';
+import { usePendingSave, type SaveState } from './pending-save';
 
 export class RequestError<T = Child> extends Error {
   constructor(public status: number, public code: string, message: string, public current?: T) {
@@ -28,7 +28,6 @@ const CHILD_KEY = 'child';
 export type ChildSave = SaveState<ChildIntent, Child, Child>;
 
 export function useChildSave(): ChildSave { return usePendingSave<ChildIntent, Child, Child>(CHILD_KEY); }
-export function clearChildSave() { clear(CHILD_KEY); }
 
 function runChild(intent: ChildIntent) {
   const { kind: _kind, ...body } = intent;
@@ -49,14 +48,11 @@ function runChild(intent: ChildIntent) {
   };
 }
 
-export function submitChild(intent: ChildIntent) { return submit<ChildIntent, Child, Child>(CHILD_KEY, intent, runChild(intent)); }
-export function retryChild() { return retry<ChildIntent, Child, Child>(CHILD_KEY); }
-// Apply my change over a stale edit: resubmit the edit at the server's revision.
-export function applyChildChange() {
-  const state = peek<ChildIntent, Child, Child>(CHILD_KEY);
-  if (state.status !== 'conflict' || state.intent.kind !== 'edit') return;
-  const intent: ChildIntent = { ...state.intent, expectedRevision: state.current.revision };
-  return submit<ChildIntent, Child, Child>(CHILD_KEY, intent, runChild(intent));
+export const CHILD_SAVE_KEY = CHILD_KEY;
+// The domain write + conflict-resubmit builder a Save flow injects for the child key.
+export function childRequest(intent: ChildIntent, action: string) { return runChild(intent)(action); }
+export function applyChildConflict(intent: ChildIntent, current: Child): ChildIntent {
+  return intent.kind === 'edit' ? { ...intent, expectedRevision: current.revision } : intent;
 }
 
 // ─── Template / assignment saves ──────────────────────────────────────────────
@@ -69,7 +65,6 @@ export type RuleConflict = AssignmentDetail | TemplateDetail;
 export type RuleSaveState = SaveState<RuleIntent, RuleSave, RuleConflict>;
 
 export function useRuleSave(): RuleSaveState { return usePendingSave<RuleIntent, RuleSave, RuleConflict>(RULE_KEY); }
-export function clearRuleSave() { clear(RULE_KEY); }
 
 function runRule(intent: RuleIntent) {
   return async (action: string) => {
@@ -82,5 +77,28 @@ function runRule(intent: RuleIntent) {
   };
 }
 
-export function submitRule(intent: RuleIntent) { return submit<RuleIntent, RuleSave, RuleConflict>(RULE_KEY, intent, runRule(intent)); }
-export function retryRule() { return retry<RuleIntent, RuleSave, RuleConflict>(RULE_KEY); }
+export const RULE_SAVE_KEY = RULE_KEY;
+// The domain write a Save flow injects for the shared rule key.
+export function ruleRequest(intent: RuleIntent, action: string) { return runRule(intent)(action); }
+
+// Which editor an in-flight rule save belongs to, so RootShell can force-render it
+// after the user navigates away. Only a save still saving/recovering locks a page;
+// a settled conflict/success/rejection stays on its own screen. The id segment is
+// URL-encoded in both the save path and the route, so editorPath compares directly.
+export type RuleRecovery =
+  | { kind: 'assignment'; childId: string }
+  | { kind: 'template'; target: { kind: 'create' } | { kind: 'edit'; id: string }; editorPath: string };
+
+export function ruleRecovery(state: RuleSaveState): RuleRecovery | null {
+  if (!('intent' in state) || (state.status !== 'saving' && state.status !== 'uncertain')) return null;
+  const seg = state.intent.path.split('/');
+  if (state.intent.path.startsWith('/api/children/')) {
+    return { kind: 'assignment', childId: decodeURIComponent(seg[3] ?? '') };
+  }
+  if (state.intent.path.startsWith('/api/templates')) {
+    return seg.length > 3 && seg[3]
+      ? { kind: 'template', target: { kind: 'edit', id: decodeURIComponent(seg[3]) }, editorPath: `/templates/${seg[3]}` }
+      : { kind: 'template', target: { kind: 'create' }, editorPath: '/templates/new' };
+  }
+  return null;
+}
