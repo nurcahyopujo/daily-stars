@@ -50,7 +50,7 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
   // The rule-save store is shared with the templates page; only react to saves for this child.
   const ownsSave = 'intent' in save && save.intent.path === path;
   const locked = ownsSave && (save.status === 'saving' || save.status === 'uncertain');
-  const conflict = ownsSave && save.status === 'rejected' && save.current && !('affectedChildren' in save.current)
+  const conflict = ownsSave && save.status === 'conflict' && !('affectedChildren' in save.current)
     ? save.current : undefined;
   const frozen = locked || Boolean(conflict);
 
@@ -186,16 +186,17 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
 
     {ownsSave && save.status === 'saving' && <p role="status">Saving {save.intent.label}…</p>}
     {ownsSave && save.status === 'rejected' && <div className="child-profiles-save"><p role="alert">{save.message}</p>
-      {conflict && <div>
+      <Button type="button" className="modal-cancel" onClick={() => { clearRuleSave(); void reload(); }}>Reload latest assignments</Button>
+    </div>}
+    {conflict && <div className="child-profiles-save">
+      <div>
         <p><strong>Latest scheduled assignments</strong> · Revision {(conflict.pending ?? conflict.current)?.revision}</p>
         <p>{assignmentNames((conflict.pending ?? conflict.current)?.templateIds ?? [], tomorrow)}</p>
         <p><strong>Your change</strong></p>
         <p>{startToday ? 'Add today · ' : ''}{assignmentNames(selectedAssignments, effectiveDate)}</p>
         <Button type="button" onClick={() => submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
-      </div>}
-      <Button type="button" className="modal-cancel" onClick={() => { clearRuleSave(); void reload(); }}>
-        {conflict ? 'Keep current' : 'Reload latest assignments'}
-      </Button>
+      </div>
+      <Button type="button" className="modal-cancel" onClick={() => { clearRuleSave(); void reload(); }}>Keep current</Button>
     </div>}
     {ownsSave && save.status === 'uncertain' && <div role="alert">
       <p>Save not confirmed for {save.intent.label}. Keep this page open to retain the retry key.</p>

@@ -167,8 +167,8 @@ export function ChildProfiles({ onSessionExpired }: { onSessionExpired: () => vo
     </div>
     </DialogContent>
     </Dialog>
-    {save.status === 'success' && <p className="child-profiles-save" role="status">Saved {save.child.displayName}.
-      {save.intent.kind === 'create' && ` Starts at 0 points. Initial templates are available from ${save.child.startDate}.`}
-      {save.child.archiveEffectiveDate && ` Archives from ${save.child.archiveEffectiveDate}. History preserved.`}</p>}
+    {save.status === 'success' && <p className="child-profiles-save" role="status">Saved {save.result.displayName}.
+      {save.intent.kind === 'create' && ` Starts at 0 points. Initial templates are available from ${save.result.startDate}.`}
+      {save.result.archiveEffectiveDate && ` Archives from ${save.result.archiveEffectiveDate}. History preserved.`}</p>}
   </section>;
 }

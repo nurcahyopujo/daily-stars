@@ -51,7 +51,7 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
   const ownsSave = 'intent' in save && save.intent.path.startsWith('/api/templates');
   const locked = ownsSave && (save.status === 'saving' || save.status === 'uncertain');
   const modalOpen = Boolean(target) || locked;
-  const conflict = ownsSave && save.status === 'rejected' && save.current && 'affectedChildren' in save.current
+  const conflict = ownsSave && save.status === 'conflict' && 'affectedChildren' in save.current
     ? save.current : undefined;
   const effectiveDate = target?.kind === 'create' ? today : tomorrow;
 
@@ -262,15 +262,18 @@ export function RuleSettings({ onSessionExpired }: { onSessionExpired: () => voi
     </>}
     {ownsSave && save.status === 'saving' && <p role="status">Saving {save.intent.label}…</p>}
     {ownsSave && save.status === 'rejected' && <div className="child-profiles-save"><p role="alert">{save.message}</p>
-      {conflict && <div>
+      {target && <Button type="button" className="modal-cancel" onClick={() => { void reload(); open(target); }}>Reload latest rules</Button>}
+    </div>}
+    {conflict && <div className="child-profiles-save">
+      <div>
         <p><strong>Latest scheduled rules</strong> · Revision {(conflict.pending ?? conflict.current)?.revision}</p>
         <Definition version={conflict.pending ?? conflict.current}/>
         <p><strong>Your change</strong></p>
         {draft && <p>{draft.name} · {draft.detail?.pending?.retired ? 'Cancel retirement'
           : draft.retire ? 'Retire template' : draft.activities.map(activity => `${activity.label} (+${activity.reward})`).join(', ')}</p>}
         <Button type="button" onClick={() => submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
-      </div>}
-      {target && <Button type="button" className="modal-cancel" onClick={() => { void reload(); open(target); }}>{conflict ? 'Keep current' : 'Reload latest rules'}</Button>}
+      </div>
+      {target && <Button type="button" className="modal-cancel" onClick={() => { void reload(); open(target); }}>Keep current</Button>}
     </div>}
     {ownsSave && save.status === 'uncertain' && <div role="alert">
       <p>Save not confirmed for {save.intent.label}. Keep this page open to retain the retry key.</p>

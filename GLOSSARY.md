@@ -52,5 +52,8 @@ The sum of a child's latest effective point contributions for today's activity d
 **Pending count**:
 The number of today's scheduled activities whose effective outcome is unrecorded.
 
+**Pending save**:
+An in-flight parent mutation tracked for recovery. It carries an idempotency action id and moves through saving, uncertain, rejected, conflict, and success. Memory only: it survives screen unmount and resume, never a reload. One pending save exists per key — a child create or edit, a template or assignment change, a day's activity outcome, or a redemption.
+
 **Activity review**:
 A parent's summary of one child's scheduled activity outcomes over a period, used to choose a routine to praise or practice.

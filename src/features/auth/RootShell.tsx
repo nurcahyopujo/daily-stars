@@ -9,9 +9,8 @@ import './parent-access.css';
 import { ChildProfiles } from '../children/ChildProfiles';
 import { RuleSettings } from '../children/RuleSettings';
 import { ChildAssignments } from '../children/ChildAssignments';
-import { clearPrizeSaves } from '../children/Prizes';
-import { clearScoreSaves } from '../children/ScoreDay';
-import { clearChildSave, clearRuleSave, resumeChildSave, resumeRuleSave, useChildSave, useRuleSave } from '../children/requests';
+import { useChildSave, useRuleSave } from '../children/requests';
+import { clearAll, resume as resumeSaves } from '../children/pending-save';
 
 const pages = [
   { id: 'home', label: 'Home', path: '/' },
@@ -62,9 +61,8 @@ export function RootShell() {
       loadSession(signal).then((result) => {
         if (!signal.aborted) {
           if (result.status === 'signed-in') {
-            if (lastEmail.current && lastEmail.current !== result.parent.email) { clearChildSave(); clearScoreSaves(); clearPrizeSaves(); clearRuleSave(); }
-            resumeChildSave();
-            resumeRuleSave();
+            if (lastEmail.current && lastEmail.current !== result.parent.email) clearAll();
+            resumeSaves();
             lastEmail.current = result.parent.email;
           }
           setSession(result);
@@ -92,9 +90,7 @@ export function RootShell() {
   }, [attempt]);
 
   const signOut = () => {
-    clearScoreSaves(); clearPrizeSaves();
-    clearChildSave();
-    clearRuleSave();
+    clearAll();
     flushSync(() => setSession({ status: 'loading' }));
     window.location.assign('/cdn-cgi/access/logout');
   };

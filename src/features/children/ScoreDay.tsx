@@ -11,14 +11,13 @@ import { Link } from '@tanstack/react-router';
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Child } from '../../../shared/profiles';
 import type { Activity, Day, Score } from '../../../shared/scoring';
-import { requestJson, RequestError } from './requests';
+import { requestJson } from './requests';
+import { clear, retry, submit, usePendingSave, type Settled } from './pending-save';
 import { DayStars } from './StarBalance';
 
-type Action = { method: string; path: string; body: Record<string, unknown>; key: string };
-const outstanding = new Map<string, Action>();
-export function clearScoreSaves() {
-  outstanding.clear();
-}
+// One day-outcome save per child at a time, keyed so saves for different children
+// coexist. The date rides along for recovery (which day the pending save belongs to).
+type ScoreIntent = { method: string; path: string; body: Record<string, unknown>; date: string };
 
 function latestOf(history: Score[], stream: string): Score | undefined {
   let best: Score | undefined;
@@ -192,18 +191,21 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
     child.archiveEffectiveDate && child.archiveEffectiveDate <= today
       ? new Date(Date.parse(child.archiveEffectiveDate + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10)
       : today;
+  const scoreKey = 'score:' + child.id;
+  const scoreSave = usePendingSave<ScoreIntent, void, Score>(scoreKey);
+  const resumedDate = scoreSave.status === 'saving' || scoreSave.status === 'uncertain' ? scoreSave.intent.date : undefined;
   const [date, setDate] = useState(
-    outstanding.get(child.id)?.path.split('/days/')[1]?.slice(0, 10) ??
-      (selectedDate && selectedDate >= child.startDate && selectedDate <= last ? selectedDate : last),
+    resumedDate ?? (selectedDate && selectedDate >= child.startDate && selectedDate <= last ? selectedDate : last),
   );
   const [data, setData] = useState<Day | null>(null);
   const [reload, refresh] = useState(0);
   const [error, setError] = useState(
-    outstanding.has(child.id) ? 'Check the submitted score before continuing.' : '',
+    scoreSave.status === 'uncertain' ? 'Check the submitted score before continuing.' : '',
   );
-  const [pending, setPending] = useState<Action | null>(outstanding.get(child.id) ?? null);
-  const [conflict, setConflict] = useState<Action | null>(null);
   const [busy, setBusy] = useState(false);
+  // Pending recovery and conflict are read straight from the engine's state.
+  const pending = scoreSave.status === 'uncertain';
+  const conflict = scoreSave.status === 'conflict' ? scoreSave.intent : null;
   const [draft, setDraft] = useState<Draft | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [voidTarget, setVoidTarget] = useState<Score | null>(null);
@@ -246,54 +248,55 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
   }, []);
   // Resolves to the reconciled day on success (used to flash the changed entry),
   // or null on failure/conflict.
-  const send = useCallback(async (action: Action, optimistic?: (prev: Day) => Day): Promise<Day | null> => {
-    outstanding.set(child.id, action);
+  // Apply a save's settled outcome: success and conflict both reconcile to the
+  // server's truth; a plain rejection rolls back the optimistic guess; an uncertain
+  // outcome keeps the optimistic view and leaves the retry key in the engine.
+  const resolveOutcome = useCallback(async (
+    outcome: Settled<ScoreIntent, void, Score> | undefined,
+    atPath: string,
+    snapshot: Day | null,
+  ): Promise<Day | null> => {
+    if (!outcome) return null;
+    if (outcome.status === 'success') { const day = await reconcile(atPath); clear(scoreKey); return day; }
+    if (outcome.status === 'conflict') { setDraft(null); setConfirm(false); await reconcile(atPath); return null; }
+    if (outcome.status === 'rejected') { clear(scoreKey); setError(outcome.message); if (snapshot) setData(snapshot); return null; }
+    setError('Save not confirmed. Keep this page open and retry.');
+    return null;
+  }, [reconcile, scoreKey]);
+  const send = useCallback(async (intent: ScoreIntent, optimistic?: (prev: Day) => Day): Promise<Day | null> => {
     const snapshot = optimistic ? dataRef.current : null;
     if (optimistic) setData((prev) => (prev ? optimistic(prev) : prev));
     const atPath = pathRef.current;
     setBusy(true);
     setError('');
-    try {
-      await requestJson(action.path, {
-        method: action.method,
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': action.key },
-        body: JSON.stringify(action.body),
+    const outcome = await submit<ScoreIntent, void, Score>(scoreKey, intent, async (action) => {
+      await requestJson(intent.path, {
+        method: intent.method,
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': action },
+        body: JSON.stringify(intent.body),
       });
-      outstanding.delete(child.id);
-      setPending(null);
-      return await reconcile(atPath);
-    } catch (e) {
-      if (e instanceof RequestError && e.status >= 400 && e.status < 500 && e.status !== 401) {
-        outstanding.delete(child.id);
-        setPending(null);
-        setError(e.message);
-        if (e.code === 'STALE_EDIT') {
-          setConflict(action);
-          setDraft(null);
-          setConfirm(false);
-          await reconcile(atPath); // load the server's current value; drops the optimistic guess
-        } else if (snapshot) {
-          setData(snapshot); // rejected outright: undo the optimistic change
-        }
-      } else {
-        // Uncertain outcome (offline / 5xx). Now the save needs resolution, so
-        // mark it pending — this is what locks the nav and shows Check / retry.
-        setPending(action);
-        setError('Save not confirmed. Keep this page open and retry.');
-      }
-      return null;
-    } finally {
-      setBusy(false);
-    }
-  }, [child.id, reconcile]);
+    });
+    try { return await resolveOutcome(outcome, atPath, snapshot); }
+    finally { setBusy(false); }
+  }, [scoreKey, resolveOutcome]);
+  // Recover an uncertain save: replay it with its original idempotency key.
+  const recheck = useCallback(() => {
+    const atPath = pathRef.current;
+    setBusy(true);
+    setError('');
+    const result = retry<ScoreIntent, void, Score>(scoreKey);
+    if (!result) { setBusy(false); return; }
+    void result.then((outcome) => resolveOutcome(outcome, atPath, null)).finally(() => setBusy(false));
+  }, [scoreKey, resolveOutcome]);
   const save = useCallback((
     method: string,
     stream: string,
     body: Record<string, unknown>,
     optimistic?: (prev: Day) => Day,
-  ): Promise<Day | null> =>
-    send({ method, path: pathRef.current + '/' + stream, body, key: crypto.randomUUID() }, optimistic),
-  [send]);
+  ): Promise<Day | null> => {
+    const base = pathRef.current;
+    return send({ method, path: base + '/' + stream, body, date: base.split('/days/')[1]?.slice(0, 10) ?? '' }, optimistic);
+  }, [send]);
   // Record an activity outcome: flash that row's stars, then save optimistically.
   const onRecord = useCallback((activity: Activity, outcome: string, revision: number) => {
     setFlash({ stream: activity.stream, n: ++flashSeq.current });
@@ -364,7 +367,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
           <div className="score-actions">
             <Button
               onClick={() => {
-                setConflict(null);
+                clear(scoreKey);
                 setError('');
               }}
             >
@@ -373,10 +376,8 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
             {current.outcome !== 'void' && (
               <Button
                 onClick={() => {
-                  setConflict(null);
                   void send({
                     ...conflict,
-                    key: crypto.randomUUID(),
                     body: { ...conflict.body, expectedRevision: current.revision },
                   });
                 }}
@@ -391,7 +392,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
         <p role="alert">
           {error}{' '}
           {pending ? (
-            <Button disabled={busy} onClick={() => void send(pending)}>
+            <Button disabled={busy} onClick={() => recheck()}>
               Check / retry
             </Button>
           ) : (
@@ -409,7 +410,7 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
         </p>
       )}
       {!data && pending && !error && !busy && (
-        <Button onClick={() => void send(pending)}>Check / retry</Button>
+        <Button onClick={() => recheck()}>Check / retry</Button>
       )}
       {!data && !error && <p role="status">Loading day…</p>}
       {data && (

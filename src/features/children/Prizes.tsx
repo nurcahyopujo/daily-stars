@@ -4,14 +4,13 @@ import { Link } from '@tanstack/react-router';
 import { BackLabel, backLinkClass } from './BackLink';
 import { useEffect, useState } from 'react';
 import type { Child } from '../../../shared/profiles';
-import { requestJson, RequestError } from './requests';
+import { requestJson } from './requests';
+import { clear, retry, submit, usePendingSave, type Settled } from './pending-save';
 import { Stars } from './ScoreDay';
 import { StarBalance, GoldStar } from './StarBalance';
 
 type Account = { balance: number; history: { id: string; label: string; cost: number; recorded: string; voided: string | null }[] };
 type Action = { path: string; method: string; body: object };
-const outstanding = new Map<string, Action>();
-export function clearPrizeSaves() { outstanding.clear(); }
 
 // Redemptions are stamped in the household's Jakarta day; show the date and time
 // without seconds so the receipt reads cleanly.
@@ -24,10 +23,12 @@ export function Prizes({ child }: { child: Child }) {
   const [data, setData] = useState<Account | null>(null);
   const [label, setLabel] = useState('');
   const [cost, setCost] = useState('');
-  const [pending, setPending] = useState(outstanding.get(child.id));
-  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [reload, refresh] = useState(0);
+  const prizeKey = 'prize:' + child.id;
+  const prizeSave = usePendingSave<Action, null, unknown>(prizeKey);
+  const busy = prizeSave.status === 'saving';
+  const pending = prizeSave.status === 'uncertain' ? prizeSave.intent : undefined;
   useEffect(() => {
     const controller = new AbortController();
     requestJson<Account>(path, { signal: controller.signal }).then(account => { if (!controller.signal.aborted) setData(account); }).catch(() => {
@@ -35,28 +36,35 @@ export function Prizes({ child }: { child: Child }) {
     });
     return () => controller.abort();
   }, [path, reload]);
-  async function send(action: Action) {
-    outstanding.set(child.id, action);
-    setPending(action);
-    setBusy(true);
-    setMessage('');
-    try {
-      await requestJson(action.path, { method: action.method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body) });
-      outstanding.delete(child.id);
-      setPending(undefined);
+  // Redemptions carry their idempotency in the URL (a per-redeem UUID, or the
+  // redemption id for a void), so the request repeats safely on retry without an
+  // Idempotency-Key header. The engine tracks the pending save for recovery.
+  function resolve(action: Action, outcome: Settled<Action, null, unknown>) {
+    if (outcome.status === 'success') {
+      clear(prizeKey);
       setLabel('');
       setCost('');
       setMessage(action.method === 'PATCH' ? 'Redemption voided. Stars returned.' : 'Prize redeemed.');
       setData(null);
       refresh(n => n + 1);
-    } catch (error) {
-      if (error instanceof RequestError && error.status >= 400 && error.status < 500 && error.status !== 401) {
-        outstanding.delete(child.id);
-        setPending(undefined);
-        setMessage(error.message);
-        refresh(n => n + 1);
-      } else setMessage('Save not confirmed. Keep this page open and check / retry.');
-    } finally { setBusy(false); }
+    } else if (outcome.status === 'rejected' || outcome.status === 'conflict') {
+      clear(prizeKey);
+      setMessage(outcome.status === 'rejected' ? outcome.message : 'Could not complete. Reload and try again.');
+      refresh(n => n + 1);
+    } else setMessage('Save not confirmed. Keep this page open and check / retry.');
+  }
+  async function send(action: Action) {
+    setMessage('');
+    const outcome = await submit<Action, null, unknown>(prizeKey, action, async () => {
+      await requestJson(action.path, { method: action.method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(action.body) });
+      return null;
+    });
+    if (outcome) resolve(action, outcome);
+  }
+  function recheck() {
+    if (!pending) return;
+    const result = retry<Action, null, unknown>(prizeKey);
+    if (result) void result.then(outcome => { if (outcome) resolve(pending, outcome); });
   }
   const exceedsBalance = data !== null && Number(cost) > data.balance;
   return <section className="child-profiles score-day prizes-page">
@@ -64,7 +72,7 @@ export function Prizes({ child }: { child: Child }) {
     <header className="scoring-day-head"><h1>{child.displayName} · Prizes</h1></header>
     {message && <p role="status" className="prizes-message">{message}</p>}
     {pending && <div role="alert" className="prizes-pending"><p>Check the submitted redemption before continuing.</p>
-      <Button disabled={busy} onClick={() => void send(pending)}>Check / retry</Button></div>}
+      <Button disabled={busy} onClick={() => recheck()}>Check / retry</Button></div>}
     {!data && <p role="status" className="prizes-loading">Loading balance…</p>}
     {data && <div className="prizes-hero">
       <StarBalance balance={data.balance}/>
