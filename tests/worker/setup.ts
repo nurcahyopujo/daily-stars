@@ -21,6 +21,7 @@ beforeEach(async () => {
     env.DB.prepare('DELETE FROM mutation_receipts'),
     env.DB.prepare('DELETE FROM mutation_assertions'),
     env.DB.prepare('DELETE FROM child_profile_revisions'),
+    env.DB.prepare('DELETE FROM assignment_pause_versions'),
     env.DB.prepare('DELETE FROM assignment_versions'),
     env.DB.prepare('DELETE FROM template_versions'),
     env.DB.prepare('DELETE FROM templates'),

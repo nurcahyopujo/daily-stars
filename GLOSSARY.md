@@ -19,6 +19,10 @@ A routine item with a reward, an optional penalty, and scheduled weekdays.
 **Assignment**:
 A child's dated selection of templates, including their display order.
 
+**Pause**:
+A period with a start and end date, both included, during which one template in a child's assignment adds no activities to that child's checklist. The template returns automatically after the end date. Its place in the assignment's order doesn't change. A pause can't start before tomorrow. It always has an end date: removing a template indefinitely is an assignment change, not a pause.
+_Avoid_: suspension, skip
+
 **Activity date**:
 The household calendar date to which an activity outcome or one-off entry belongs, distinct from when a parent records or corrects it.
 

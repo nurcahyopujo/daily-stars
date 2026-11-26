@@ -56,9 +56,9 @@ export function applyChildConflict(intent: ChildIntent, current: Child): ChildIn
 }
 
 // ─── Template / assignment saves ──────────────────────────────────────────────
-// Rule edits (templates on the templates page, a child's assignment plan) are
-// likewise one at a time, so they share a single key; callers tell them apart by
-// the intent path.
+// Rule edits (templates on the templates page, a child's assignment plan and its
+// pauses) are likewise one at a time, so they share a single key; callers tell
+// them apart by the intent path.
 const RULE_KEY = 'rule';
 export type RuleIntent = { path: string; method: 'POST' | 'PUT'; body: object; label: string };
 export type RuleConflict = AssignmentDetail | TemplateDetail;
@@ -87,11 +87,13 @@ export function ruleRequest(intent: RuleIntent, action: string) { return runRule
 // URL-encoded in both the save path and the route, so editorPath compares directly.
 export type RuleRecovery =
   | { kind: 'assignment'; childId: string }
+  | { kind: 'pauses' }
   | { kind: 'template'; target: { kind: 'create' } | { kind: 'edit'; id: string }; editorPath: string };
 
 export function ruleRecovery(state: RuleSaveState): RuleRecovery | null {
   if (!('intent' in state) || (state.status !== 'saving' && state.status !== 'uncertain')) return null;
   const seg = state.intent.path.split('/');
+  if (state.intent.path === '/api/pauses') return { kind: 'pauses' };
   if (state.intent.path.startsWith('/api/children/')) {
     return { kind: 'assignment', childId: decodeURIComponent(seg[3] ?? '') };
   }

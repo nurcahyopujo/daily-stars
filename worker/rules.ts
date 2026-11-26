@@ -4,6 +4,8 @@ import { dayBounds, jakartaToday, nextDate } from './calendar.ts';
 import { eligibleTemplates } from './child-storage.ts';
 import { ApiError, json } from './http.ts';
 import { fingerprintOf, findReceipt, saveUnconfirmed, staleEdit } from './mutation.ts';
+import { endUnassignedPauses, type Pause } from '../shared/pauses.ts';
+import { assignmentRevisionSql, insertPausesAfter, listedPauses, readPauses, readPausesStatement } from './pause-storage.ts';
 
 const allWeekdays = [1, 2, 3, 4, 5, 6, 7];
 const invalid = (message: string): never => { throw new ApiError(422, 'INVALID_INPUT', message); };
@@ -77,15 +79,22 @@ async function templateDetail(db: D1Database, id: string, today: string): Promis
   return detail;
 }
 
-async function assignmentDetail(db: D1Database, id: string, today: string): Promise<AssignmentDetail> {
-  const rows = await db.prepare(`SELECT c.start_date AS startDate, a.revision,
+type AssignmentRow = { startDate: string } & (
+  { revision: number; effectiveDate: string; ids: string } |
+  { revision: null; effectiveDate: null; ids: null }
+);
+
+// The full pause list rides along for writes; the returned detail lists only running/upcoming pauses.
+export async function assignmentDetail(db: D1Database, id: string, today: string): Promise<AssignmentDetail & { allPauses: Pause[] }> {
+  const [versions, pauseRow] = await db.batch<Record<string, unknown>>([
+    db.prepare(`SELECT c.start_date AS startDate, a.revision,
       a.effective_date AS effectiveDate, a.template_ids_json AS ids
     FROM children c LEFT JOIN assignment_versions a ON a.child_id = c.id
-    WHERE c.id = ? ORDER BY a.effective_date DESC, a.revision DESC`)
-    .bind(id).all<{ startDate: string } & (
-      { revision: number; effectiveDate: string; ids: string } |
-      { revision: null; effectiveDate: null; ids: null }
-    )>();
+    WHERE c.id = ? ORDER BY a.effective_date DESC, a.revision DESC`).bind(id),
+    readPausesStatement(db, id),
+  ]);
+  const rows = { results: versions.results as AssignmentRow[] };
+  const { revision, pauses } = readPauses(pauseRow.results[0]);
   const child = rows.results[0] ?? missing('Child not found.');
   const version = (pending: boolean) => {
     const row = rows.results.find(({ effectiveDate }) => effectiveDate !== null && (effectiveDate > today) === pending);
@@ -96,7 +105,12 @@ async function assignmentDetail(db: D1Database, id: string, today: string): Prom
   return {
     current: version(false) ?? { revision: 0, effectiveDate: child.startDate, templateIds: [] },
     pending: version(true),
+    revision, pauses: listedPauses(pauses, today), allPauses: pauses,
   };
+}
+
+export function publicDetail({ allPauses: _all, ...detail }: AssignmentDetail & { allPauses: Pause[] }): AssignmentDetail {
+  return detail;
 }
 
 export async function ruleRoutes(request: Request, db: D1Database, parent: Parent, today: string, path: string) {
@@ -107,7 +121,7 @@ export async function ruleRoutes(request: Request, db: D1Database, parent: Paren
   if (!creating && (!route || !['GET', 'PUT'].includes(request.method))) return null;
   const id = route?.[1] ?? crypto.randomUUID();
   if (request.method === 'GET') {
-    return json({ today, ...(assignment ? await assignmentDetail(db, id, today) : await templateDetail(db, id, today)) });
+    return json({ today, ...(assignment ? publicDetail(await assignmentDetail(db, id, today)) : await templateDetail(db, id, today)) });
   }
 
   const action = request.headers.get('Idempotency-Key');
@@ -158,11 +172,12 @@ export async function ruleRoutes(request: Request, db: D1Database, parent: Paren
     const audit = [parent.sub, parent.email, recorded];
     const statements: D1PreparedStatement[] = [];
     const loadDetail = () => assignment ? assignmentDetail(db, id, date) : templateDetail(db, id, date);
-    const conflict = async (detail: AssignmentDetail | TemplateDetail) => {
-      if ((detail.pending ?? detail.current)?.revision !== expected) {
+    const conflict = async (detail: (AssignmentDetail & { allPauses: Pause[] }) | TemplateDetail) => {
+      const latest = 'allPauses' in detail ? detail.revision : (detail.pending ?? detail.current)?.revision;
+      if (latest !== expected) {
         const receipt = await replay();
         if (receipt) return receipt;
-        staleEdit('These rules changed. Review the latest version before saving.', detail);
+        staleEdit('These rules changed. Review the latest version before saving.', 'allPauses' in detail ? publicDetail(detail) : detail);
       }
     };
     const detail = creating ? null : await loadDetail();
@@ -170,7 +185,7 @@ export async function ruleRoutes(request: Request, db: D1Database, parent: Paren
     if (recovered) return recovered;
     if (assignment) {
       const additions = ids as string[];
-      const plan = detail as AssignmentDetail;
+      const plan = detail as AssignmentDetail & { allPauses: Pause[] };
       const child = await db.prepare('SELECT archive_effective_date AS archive FROM children WHERE id = ?')
         .bind(id).first<{ archive: string | null }>();
       if (child?.archive && child.archive <= effectiveDate) invalid('This child will be archived by the effective date.');
@@ -178,11 +193,10 @@ export async function ruleRoutes(request: Request, db: D1Database, parent: Paren
       const selected = startToday ? [...new Set([...plan.current!.templateIds, ...additions])] : additions;
       const validate = JSON.stringify(additions);
       statements.push(db.prepare(`INSERT INTO assignment_versions
-        SELECT ?, ?, ?, ?, ?, ?, ? WHERE
-          coalesce((SELECT MAX(revision) FROM assignment_versions WHERE child_id = ?), 0) = ?
+        SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${assignmentRevisionSql} = ?
           AND EXISTS (SELECT 1 FROM children WHERE id = ? AND (archive_effective_date IS NULL OR archive_effective_date > ?))
           AND (SELECT COUNT(*) FROM json_each(?) WHERE value IN (${eligibleTemplates})) = ?`)
-        .bind(...bindings, JSON.stringify(selected), ...audit, id, expected, id, effectiveDate,
+        .bind(...bindings, JSON.stringify(selected), ...audit, id, id, expected, id, effectiveDate,
           validate, effectiveDate, effectiveDate, additions.length));
       const pending = plan.pending;
       if (startToday && pending && (!child?.archive || child.archive > pending.effectiveDate)) {
@@ -193,6 +207,12 @@ export async function ruleRoutes(request: Request, db: D1Database, parent: Paren
           SELECT ?, ?, ?, ?, ?, ?, ? WHERE changes() = 1 AND EXISTS (
             SELECT 1 FROM children WHERE id = ? AND (archive_effective_date IS NULL OR archive_effective_date > ?)
           )`).bind(id, result.revision, pending.effectiveDate, JSON.stringify(future), ...audit, id, pending.effectiveDate));
+      }
+      // Unassigning a template ends its pause the day before and cancels later ones (ADR 0006).
+      const pauses = startToday ? plan.allPauses : endUnassignedPauses(plan.allPauses, selected, effectiveDate);
+      if (pauses !== plan.allPauses) {
+        result.revision++;
+        statements.push(insertPausesAfter(db, id, result.revision, pauses, audit as [string, string, string]));
       }
     } else {
       const templateDetail = detail && 'affectedChildren' in detail ? detail : null;

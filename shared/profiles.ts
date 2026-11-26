@@ -1,3 +1,5 @@
+import type { Pause } from './pauses.ts';
+
 export type Child = {
   id: string;
   displayName: string;
@@ -40,5 +42,12 @@ export type AssignmentVersion = {
 
 export type DatedRules<T> = { current: T | null; pending: T | null };
 export type TemplateDetail = TemplateSummary & { affectedChildren: string[] };
-export type AssignmentDetail = DatedRules<AssignmentVersion>;
+/**
+ * A child's assignment plan. `revision` is the child's assignment revision, which
+ * pause saves advance too (ADR 0006); send it as `expectedRevision` for either.
+ * `pauses` lists running and upcoming pauses only.
+ */
+export type AssignmentDetail = DatedRules<AssignmentVersion> & { revision: number; pauses: Pause[] };
 export type RuleSave = { id: string; revision: number; effectiveDate: string };
+/** A pause save: the new assignment revision of every child it touched. */
+export type PauseSave = RuleSave & { children: { id: string; revision: number }[] };

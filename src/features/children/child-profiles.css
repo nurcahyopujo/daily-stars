@@ -348,6 +348,45 @@
 
 .assignments-page .assign-archived { margin: 0; padding: 13px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: #f7f5ef; color: #59665e; font-size: 14px; line-height: 1.5; }
 
+/* ─── Pauses ───────────────────────────────────────────────────────────────────
+   A routine stopped for a range of dates. Shown below the assignment editor and
+   on the Pause routines page; the gold note matches the "takes effect" accent. */
+.assignments-page .pause-section { margin-top: 22px; padding: 20px 22px; border: 1px solid var(--color-border); border-radius: 22px; background: var(--color-surface); }
+.pause-section-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px; }
+.assignments-page .pause-section-head .assign-editor-title { margin-bottom: 6px; }
+.pause-section-link, .pause-planned-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-action); font-size: 14px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.pause-section-link:focus-visible, .pause-planned-link:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; border-radius: 4px; }
+.pause-section-intro { margin: 0 0 14px; font-size: 13.5px; line-height: 1.5; color: #59665e; }
+.pause-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.pause-item { display: grid; gap: 10px; padding: 13px 15px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; color: #5f4a16; }
+.pause-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pause-item-name { font-weight: 700; color: #4a3a12; overflow-wrap: anywhere; }
+.pause-item-when { font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.pause-item-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pause-item-actions button { min-height: 44px; }
+.pause-item button.pause-secondary { border: 1px solid var(--color-field-border); background: var(--color-surface); color: var(--color-action); font-weight: 600; box-shadow: none; }
+.pause-item button.pause-secondary:not(:disabled):hover { background: var(--color-action-soft); filter: none; }
+.assignments-page form.pause-item-editor { display: grid; gap: 12px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.pause-planned { margin-top: 16px; }
+.pause-planned-list { display: flex; flex-wrap: wrap; gap: 0 18px; margin: 4px 0 0; padding: 0; list-style: none; }
+.pause-dates { display: grid; gap: 8px; }
+.pause-dates-row { display: grid; gap: 12px; }
+@media (min-width: 460px) { .pause-dates-row { grid-template-columns: 1fr 1fr; } }
+.pause-dates-field { display: grid; gap: 6px; min-width: 0; }
+.pause-dates-label { display: block; font-size: 13px; font-weight: 650; color: #293d35; }
+.pause-dates-locked { margin: 0; padding: 10px 14px; min-height: 44px; border: 1px dashed var(--color-field-border); border-radius: var(--radius-control); font-size: 14px; color: #59665e; }
+.pause-dates-summary { margin: 2px 0 0; font-size: 13.5px; line-height: 1.45; color: #59665e; }
+.pause-dates-summary[data-problem] { color: #8c2f1d; font-weight: 600; }
+.pause-page .pause-child { margin-top: 18px; }
+.scoring-day-pausenote { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 11px 14px; border: 1px solid #e4d2a0; border-radius: var(--radius-control); background: #faf3df; color: #5f4a16; font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.scoring-day-pausenote svg { flex: none; color: #8a681f; }
+.scoring-day-pausenote strong { color: #4a3a12; font-weight: 700; }
+
+.templates-heading-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+a.templates-pause { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 16px 0 13px; border: 1px solid var(--color-field-border); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-action); font-size: 14px; font-weight: 650; text-decoration: none; white-space: nowrap; }
+a.templates-pause:hover { background: var(--color-action-soft); }
+a.templates-pause:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+
 /* ─── Templates library ──────────────────────────────────────────────────────
    Reusable routines. The index reads as linked cards (the whole card opens its
    editor page); create and edit are full pages now, not a modal. */
