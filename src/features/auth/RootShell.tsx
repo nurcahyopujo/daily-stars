@@ -9,6 +9,7 @@ import './parent-access.css';
 import { ChildProfiles } from '../children/ChildProfiles';
 import { TemplateEditor } from '../children/TemplateEditor';
 import { ChildAssignments } from '../children/ChildAssignments';
+import { PauseRoutines } from '../children/PauseRoutines';
 import { ruleRecovery, useChildSave, useRuleSave } from '../children/requests';
 import { clearAll, resume as resumeSaves } from '../children/pending-save';
 import { PrizeEditor } from '../prizes/PrizeEditor';
@@ -22,7 +23,7 @@ const pages = [
 ] as const;
 
 function activePage(pathname: string) {
-  if (pathname.startsWith('/templates')) return 'templates';
+  if (pathname.startsWith('/templates') || pathname.startsWith('/pauses')) return 'templates';
   if (pathname.startsWith('/prizes')) return 'prizes';
   if (pathname.startsWith('/profile')) return 'profile';
   // Home hosts the children list, so '/', '/home' and every '/children…' page belong to it.
@@ -163,6 +164,8 @@ export function RootShell() {
         </section>
       : assignmentLockChildId && pathname !== `/children/${assignmentLockChildId}/assignments`
         ? <ChildAssignments childId={assignmentLockChildId} onSessionExpired={sessionExpired} />
+      : recovery?.kind === 'pauses' && pathname !== '/pauses'
+        ? <PauseRoutines onSessionExpired={sessionExpired} />
       : templateLockTarget && pathname !== templateEditorPath
         ? <TemplateEditor target={templateLockTarget} onSessionExpired={sessionExpired} />
       : prizeLock && pathname !== prizeLock.editorPath

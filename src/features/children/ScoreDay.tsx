@@ -1,6 +1,6 @@
 import { DatePicker } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { HistoryIcon } from "lucide-react";
+import { HistoryIcon, PauseCircle } from "lucide-react";
 import { BackLabel, backLinkClass } from './BackLink';
 import { Link } from '@tanstack/react-router';
 import { memo, useCallback, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ import { sameEntries, withOutcome } from './score-day-model';
 import { DayStars, Stars } from './StarBalance';
 import { StreamHistory } from './StreamHistory';
 import { OneOffEditor } from './OneOffEditor';
+import { pauseDay } from './PauseDates';
 
 // One day-outcome save per child at a time, keyed so saves for different children
 // coexist. The date rides along for recovery (which day the pending save belongs to).
@@ -295,6 +296,12 @@ export function ScoreDay({ child, today, date: selectedDate, onDateChange }: {
           <DayStars today={day.data.net} total={day.data.balance ?? day.data.total} past={date !== today} />
           <fieldset className="scoring-day-entries" disabled={!!pending || oneOffOpen || !!conflict}>
             <h2>Activities</h2>
+            {day.data.pauses?.map((pause) => (
+              <p className="scoring-day-pausenote" role="note" key={pause.templateId}>
+                <PauseCircle aria-hidden="true" size={16} />
+                <span><strong>{pause.template}</strong> paused until {pauseDay(pause.endDate)}{pause.reason && <> · {pause.reason}</>}</span>
+              </p>
+            ))}
             {!day.data.activities.length && <p>No activities scheduled.</p>}
             {day.data.activities.map((a) => (
               <ActivityRow

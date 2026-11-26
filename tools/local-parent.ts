@@ -28,6 +28,8 @@ export function localParent(databasePath?: string): Plugin {
           || (/^\/api\/prizes\/[^/]+$/.test(path) && ['GET', 'PUT'].includes(incoming.method ?? ''))
           || (path === '/api/templates' && ['GET', 'POST'].includes(incoming.method ?? ''))
           || (/^\/api\/(templates\/[^/]+|children\/[^/]+\/assignments)$/.test(path) && ['GET', 'PUT'].includes(incoming.method ?? ''))
+          || (path === '/api/pauses' && incoming.method === 'POST')
+          || (/^\/api\/children\/[^/]+\/pauses\/[^/]+$/.test(path) && incoming.method === 'PUT')
           || (/^\/api\/children\/[^/]+$/.test(path) && incoming.method === 'PATCH');
         if (!loopback || !localHost || (!session && !profiles)) { next(); return; }
         const parent = { sub: 'local-synthetic-parent', email: 'local-parent@example.test' };

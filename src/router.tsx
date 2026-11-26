@@ -6,6 +6,7 @@ import { ChildProfiles } from './features/children/ChildProfiles';
 import { TemplateList } from './features/children/TemplateList';
 import { TemplateEditor } from './features/children/TemplateEditor';
 import { ChildDayRoute, ChildPrizesRoute, ChildReviewRoute, ChildAssignmentsRoute } from './features/children/child-routes';
+import { PauseRoutines } from './features/children/PauseRoutines';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { PrizeList } from './features/prizes/PrizeList';
 import { PrizeEditor } from './features/prizes/PrizeEditor';
@@ -54,6 +55,21 @@ function TemplateEditPage() {
     onSaved={() => void navigate({ to: '/templates' })} />;
 }
 
+const pausesApi = getRouteApi('/pauses');
+function PauseRoutinesPage() {
+  const { childId, templateId } = pausesApi.useSearch();
+  const { sessionExpired } = useSession();
+  return <PauseRoutines key={`${childId}/${templateId}`} childId={childId} templateId={templateId} onSessionExpired={sessionExpired} />;
+}
+
+// Optional preselection for the pause page: a child, and one of its templates.
+const pauseSearch = (search: Record<string, unknown>): { childId?: string; templateId?: string } => {
+  const pick = (value: unknown) => typeof value === 'string' && value.length <= 128 ? value : undefined;
+  const childId = pick(search.childId);
+  const templateId = childId ? pick(search.templateId) : undefined;
+  return { ...(childId ? { childId } : {}), ...(templateId ? { templateId } : {}) };
+};
+
 const prizeListApi = getRouteApi('/prizes');
 function PrizeListPage() {
   const query = prizeListApi.useSearch();
@@ -98,6 +114,7 @@ const routeTree = rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/review', validateSearch: dateSearch, component: ChildReviewRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/children/$childId/assignments', component: ChildAssignmentsRoute }),
   createRoute({ getParentRoute: () => rootRoute, path: '/templates', component: TemplateListPage }),
+  createRoute({ getParentRoute: () => rootRoute, path: '/pauses', validateSearch: pauseSearch, component: PauseRoutinesPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/templates/new', component: TemplateCreatePage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/templates/$templateId', component: TemplateEditPage }),
   createRoute({ getParentRoute: () => rootRoute, path: '/prizes', validateSearch: parsePrizeQuery, component: PrizeListPage }),

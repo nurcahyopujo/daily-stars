@@ -1,5 +1,5 @@
 import { scheduledActivities, type Score } from '../shared/scoring.ts';
-import { assignedTemplates, readScheduledTemplates } from './schedule-storage.ts';
+import { assignedTemplates, pausesOn, readDayPauses, readScheduledTemplates } from './schedule-storage.ts';
 import type { Parent } from './auth.ts';
 import { ApiError, json } from './http.ts';
 import { fingerprintOf, findReceipt, staleEdit } from './mutation.ts';
@@ -30,7 +30,7 @@ export async function scoring(
     (profile.archive_effective_date && date >= profile.archive_effective_date)
   )
     invalid('Choose a date when this child was active.');
-  const [templates, revisions, sums] = await db.batch<Record<string, unknown>>([
+  const [templates, revisions, sums, paused] = await db.batch<Record<string, unknown>>([
     assignedTemplates(db, child, date, date),
     db
       .prepare(
@@ -42,10 +42,12 @@ export async function scoring(
         'SELECT total,balance,(SELECT coalesce(sum(points),0) FROM effective_scores WHERE day=? AND child_id=?) net FROM child_balances WHERE child_id=?',
       )
       .bind(date, child, child),
+    pausesOn(db, child, date),
   ]);
   const activities = readScheduledTemplates(templates.results).flatMap(scheduledActivities);
   const history = revisions.results as unknown as Score[];
-  if (!suffix && request.method === 'GET') return json({ today, activities, history, ...sums.results[0] });
+  const pauses = readDayPauses(paused.results);
+  if (!suffix && request.method === 'GET') return json({ today, activities, history, pauses, ...sums.results[0] });
   const activity = activities.find((a) => a.stream === suffix);
   const create = suffix === 'one-offs' && request.method === 'POST';
   const edit = /^one-offs\/[\w-]+$/.test(suffix) && request.method === 'PATCH';

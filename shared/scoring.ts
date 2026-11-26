@@ -14,7 +14,9 @@ export type Score = {
   actor: string;
   recorded: string;
 };
-export type Day = { today: string; activities: Activity[]; history: Score[]; net: number; balance?: number; total: number };
+/** A pause covering the day, so the screen can say why a routine is missing. */
+export type DayPause = { templateId: string; template: string; endDate: string; reason?: string };
+export type Day = { today: string; activities: Activity[]; history: Score[]; pauses: DayPause[]; net: number; balance?: number; total: number };
 
 export type ScheduledTemplate = {
   date: string;

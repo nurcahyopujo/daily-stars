@@ -1,4 +1,5 @@
 import { ruleRoutes } from './rules.ts';
+import { pauseRoutes } from './pauses.ts';
 import { prizes } from './prizes.ts';
 import { prizeCatalogRoutes } from './prize-catalog.ts';
 import { scoring } from './scoring.ts';
@@ -42,6 +43,8 @@ export async function profileRoutes(
   }
   const catalog = await prizeCatalogRoutes(request, db, parent, url.pathname);
   if (catalog) return catalog;
+  const pauses = await pauseRoutes(request, db, parent, url.pathname);
+  if (pauses) return pauses;
   const rules = await ruleRoutes(request, db, parent, today, url.pathname);
   if (rules) return rules;
   const edit = /^\/api\/children\/([^/]+)$/.exec(url.pathname);

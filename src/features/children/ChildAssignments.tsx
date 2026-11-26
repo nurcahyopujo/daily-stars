@@ -9,6 +9,7 @@ import type { AssignmentDetail, RuleSave, TemplateSummary } from '../../../share
 import { requestJson, RequestError, RULE_SAVE_KEY, ruleRequest, type RuleConflict, type RuleIntent } from './requests';
 import { useSaveFlow } from './save-flow';
 import { TemplatePicker } from './TemplatePicker';
+import { ChildPauses, type PauseEdit } from './ChildPauses';
 import { useHouseholdProfiles } from './useHouseholdProfiles';
 import './child-profiles.css';
 
@@ -45,16 +46,19 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
   const [startToday, setStartToday] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
-  const [saved, setSaved] = useState<{ label: string; effectiveDate: string } | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const path = `/api/children/${encodeURIComponent(childId)}/assignments`;
-  // The rule key is shared with the templates page; `owns` masks the flow to this child's save.
+  const pausePath = `/api/children/${encodeURIComponent(childId)}/pauses/`;
+  // The rule key is shared with the templates page; `owns` masks the flow to this child's saves.
   const flow = useSaveFlow<RuleIntent, RuleSave, RuleConflict>({
-    key: RULE_SAVE_KEY, request: ruleRequest, owns: (intent) => intent.path === path,
+    key: RULE_SAVE_KEY, request: ruleRequest, owns: (intent) => intent.path === path || intent.path.startsWith(pausePath),
   });
+  const pauseIntent = !!flow.intent?.path.startsWith(pausePath);
   const frozen = flow.frozen;
   const conflict = flow.phase === 'conflict' && flow.conflict && !('affectedChildren' in flow.conflict)
     ? flow.conflict : undefined;
+  const assignmentConflict = pauseIntent ? undefined : conflict;
 
   const selectedAssignments = startToday ? additions : ids;
   const effectiveDate = startToday ? today : tomorrow;
@@ -96,9 +100,14 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
     return () => controller.abort();
   }, [path, reloadKey, onSessionExpired]);
 
-  function handle(outcome: Awaited<ReturnType<typeof flow.run>>, label: string) {
+  // Pause intents carry their whole confirmation as the label; assignment saves name the effective date.
+  function confirmation(intent: RuleIntent, result: RuleSave) {
+    return intent.path.startsWith(pausePath) ? `Saved. ${intent.label}.` : `Saved ${intent.label}. Effective ${result.effectiveDate} · Jakarta.`;
+  }
+
+  function handle(outcome: Awaited<ReturnType<typeof flow.run>>, intent: RuleIntent | undefined) {
     if (outcome.phase === 'success') {
-      setSaved({ label, effectiveDate: outcome.result.effectiveDate });
+      if (intent) setSaved(confirmation(intent, outcome.result));
       void reload();
       setReloadKey(key => key + 1);
     } else if (outcome.phase === 'recover' && outcome.signInRequired) onSessionExpired();
@@ -117,15 +126,22 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
 
   async function submit(reviewedRevision?: number) {
     if (!detail || frozen && reviewedRevision === undefined) return;
-    const expectedRevision = reviewedRevision ?? (detail.pending ?? detail.current)?.revision;
-    const label = `Assignments for ${child?.displayName ?? 'child'}`;
+    const expectedRevision = reviewedRevision ?? detail.revision;
+    const intent: RuleIntent = { path, method: 'PUT', label: `Assignments for ${child?.displayName ?? 'child'}`,
+      body: { expectedRevision, templateIds: selectedAssignments, ...(startToday ? { startToday } : {}) } };
     setSaved(null);
-    handle(await flow.run({ path, method: 'PUT', label,
-      body: { expectedRevision, templateIds: selectedAssignments, ...(startToday ? { startToday } : {}) } }), label);
+    handle(await flow.run(intent), intent);
+  }
+  async function savePause(pauseId: string, edit: PauseEdit, label: string) {
+    if (!detail || frozen) return;
+    const intent: RuleIntent = { path: pausePath + encodeURIComponent(pauseId), method: 'PUT', label,
+      body: { expectedRevision: detail.revision, ...edit } };
+    setSaved(null);
+    handle(await flow.run(intent), intent);
   }
   function recheck() {
-    const label = flow.intent?.label ?? '';
-    void flow.retry().then(outcome => handle(outcome, label));
+    const intent = flow.intent;
+    void flow.retry().then(outcome => handle(outcome, intent));
   }
 
   if (error) return <section className="child-profiles"><div role="alert">
@@ -191,19 +207,31 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
                 <Button type="submit" className="assign-save" disabled={startToday && !selectedAssignments.length}>Save assignments</Button>
               </fieldset>
             </form>}
+
+        {eligible && <ChildPauses childId={childId} pauses={detail.pauses} today={today} disabled={frozen}
+          planned={((detail.pending ?? detail.current)?.templateIds ?? []).flatMap(id => {
+            const name = nameList([id], tomorrow)[0];
+            return name ? [{ id, name }] : [];
+          })}
+          templateName={(id, date) => nameList([id], date)[0] ?? 'Unavailable template'}
+          onSave={(pauseId, edit, label) => void savePause(pauseId, edit, label)} />}
       </>}
 
     {flow.phase === 'saving' && flow.intent && <p role="status">Saving {flow.intent.label}…</p>}
     {flow.phase === 'rejected' && <div className="child-profiles-save"><p role="alert">{flow.error}</p>
-      <Button type="button" className="modal-cancel" onClick={() => { flow.dismiss(); void reload(); }}>Reload latest assignments</Button>
+      <Button type="button" className="modal-cancel" onClick={() => { flow.dismiss(); void reload(); setReloadKey(key => key + 1); }}>Reload latest assignments</Button>
     </div>}
-    {conflict && <div className="child-profiles-save">
+    {conflict && pauseIntent && <div className="child-profiles-save" role="alert">
+      <p>These assignments or pauses changed since you opened them. Review the latest before changing the pause again.</p>
+      <Button type="button" className="modal-cancel" onClick={() => { flow.dismiss(); setReloadKey(key => key + 1); }}>Reload latest pauses</Button>
+    </div>}
+    {assignmentConflict && <div className="child-profiles-save">
       <div>
-        <p><strong>Latest scheduled assignments</strong> · Revision {(conflict.pending ?? conflict.current)?.revision}</p>
-        <p>{assignmentNames((conflict.pending ?? conflict.current)?.templateIds ?? [], tomorrow)}</p>
+        <p><strong>Latest scheduled assignments</strong> · Revision {assignmentConflict.revision}</p>
+        <p>{assignmentNames((assignmentConflict.pending ?? assignmentConflict.current)?.templateIds ?? [], tomorrow)}</p>
         <p><strong>Your change</strong></p>
         <p>{startToday ? 'Add today · ' : ''}{assignmentNames(selectedAssignments, effectiveDate)}</p>
-        <Button type="button" onClick={() => void submit((conflict.pending ?? conflict.current)?.revision)}>Apply my change</Button>
+        <Button type="button" onClick={() => void submit(assignmentConflict.revision)}>Apply my change</Button>
       </div>
       <Button type="button" className="modal-cancel" onClick={() => { flow.dismiss(); void reload(); }}>Keep current</Button>
     </div>}
@@ -211,6 +239,6 @@ export function ChildAssignments({ childId, onSessionExpired }: { childId: strin
       <p>Save not confirmed for {flow.intent.label}. Keep this page open to retain the retry key.</p>
       <Button type="button" onClick={() => recheck()}>Check / retry</Button>
     </div>}
-    {saved && <p role="status">Saved {saved.label}. Effective {saved.effectiveDate} · Jakarta.</p>}
+    {saved && <p role="status">{saved}</p>}
   </section>;
 }

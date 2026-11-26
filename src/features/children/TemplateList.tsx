@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, PauseCircle, Plus } from "lucide-react";
 import { Link } from '@tanstack/react-router';
 import type { TemplateSummary } from '../../../shared/profiles';
 import { useRuleSave } from './requests';
@@ -25,9 +25,14 @@ export function TemplateList({ onSessionExpired }: { onSessionExpired: () => voi
         <h1 id="templates-title">Activity templates</h1>
         <p className="templates-intro">Reusable routines you assign to a child. A new template starts today; edits take effect on the next Jakarta day.</p>
       </div>
-      <Link to="/templates/new" className="templates-create">
-        <Plus size={17} aria-hidden="true" /><span>Create template</span>
-      </Link>
+      <div className="templates-heading-actions">
+        <Link to="/templates/new" className="templates-create">
+          <Plus size={17} aria-hidden="true" /><span>Create template</span>
+        </Link>
+        <Link to="/pauses" className="templates-pause">
+          <PauseCircle size={17} aria-hidden="true" /><span>Pause routines</span>
+        </Link>
+      </div>
     </div>
 
     {savedTemplate && <p role="status" className="templates-saved">Saved {save.intent.label}. Effective {save.result.effectiveDate} · Jakarta.</p>}
