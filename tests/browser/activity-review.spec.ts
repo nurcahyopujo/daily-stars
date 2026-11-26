@@ -12,9 +12,15 @@ async function pick(page: Page, combo: string, option: string) {
   await page.getByRole('option', { name: option, exact: true }).click();
 }
 
-// The review period is a segmented control of native radios.
+// The review period is a segmented control of native radios. Changing it refetches
+// and remounts the cards, so wait for the new period's data before touching them;
+// otherwise a card opened on the old render comes back closed.
 async function selectPeriod(page: Page, label: string) {
+  const days = label === 'Last 4 weeks' ? '28' : '7';
+  const loaded = page.waitForResponse((response) => response.url().includes(`/activity-review?days=${days}`));
   await page.getByRole('radio', { name: label, exact: true }).check();
+  await loaded;
+  await expect(page.getByRole('status').filter({ hasText: 'Loading activity review' })).toHaveCount(0);
 }
 
 // Each activity is a collapsible <details>; open it before reading its breakdown.
@@ -77,7 +83,8 @@ test('parent reviews completed household days and switches to four weeks', async
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(280);
 
   await context.setOffline(true);
-  await selectPeriod(page, 'Last 7 days');
+  // Offline, so no response arrives; check the radio directly instead of waiting for data.
+  await page.getByRole('radio', { name: 'Last 7 days', exact: true }).check();
   await expect(page.getByRole('alert')).toContainText('Couldn’t load the activity review.');
   await page.screenshot({ path: info.outputPath('activity-review-error.png'), fullPage: true });
   await context.setOffline(false);
